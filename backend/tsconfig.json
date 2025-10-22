@@ -2,8 +2,8 @@
   "compilerOptions": {
     "rootDir": "./src",
     "outDir": "./dist",
-    "module": "ESNext",
-    "moduleResolution": "Node",
+  "module": "CommonJS",
+  "moduleResolution": "Node",
     "target": "ESNext",
     "types": ["node"],
     "allowSyntheticDefaultImports": true,
@@ -33,8 +33,7 @@
     // Recommended Options
     "strict": true,
     "jsx": "react-jsx",
-    "verbatimModuleSyntax": true,
-    "isolatedModules": true,
+  "isolatedModules": true,
     "noUncheckedSideEffectImports": true,
     "moduleDetection": "force",
     "skipLibCheck": true,
