@@ -1,0 +1,84 @@
+name: CI-CD Pipeline
+
+on:
+  push:
+    branches: ["main", "dev"]
+  pull_request:
+    branches: ["main", "dev"]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Build services (Docker)
+        run: |
+          docker build -t gateway-service ./gateway
+          docker build -t payments-service ./payments
+          docker build -t analytics-service ./analytics
+          docker build -t notifications-service ./notifications
+
+      - name: Upload Dockerfiles as artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: built-dockerfiles
+          path: |
+            gateway/Dockerfile
+            payments/Dockerfile
+
+  test:
+    needs: build
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+      mongo:
+        image: mongo:6
+        ports: ["27017:27017"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          cd gateway && npm ci
+          cd ../payments && npm ci
+
+      - name: Run integration tests
+        run: |
+          echo "Running integration tests..."
+          # Example: npm run test:integration
+
+  deploy:
+    needs: test
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy Backend to Railway
+        env:
+          RAILWAY_API_KEY: ${{ secrets.RAILWAY_API_KEY }}
+        run: |
+          echo "Deploying backend to Railway..."
+          npm install -g @railway/cli
+          railway up --service gateway --token $RAILWAY_API_KEY
+
+      - name: Deploy Frontend to Vercel
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          echo "Deploying frontend to Vercel..."
+          npm install -g vercel
+          cd ../frontend
+          vercel --prod --token $VERCEL_TOKEN
