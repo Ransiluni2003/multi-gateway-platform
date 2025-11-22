@@ -1,12 +1,21 @@
 import './App.css';
+import React, { useState } from 'react';
+import FilesPage from './pages/FilesPage';
+import Dashboard from './pages/Dashboard';
+import NavBar from './components/NavBar';
+import TraceViewer from './admin/TraceViewer';
 
 function App() {
+  const [route, setRoute] = useState('dashboard');
+
   return (
     <div className="App">
-      <header className="App-header">
-        <h1>Welcome to Multi-Gateway Platform</h1>
-        <p>Frontend is running successfully 🚀</p>
-      </header>
+      <NavBar active={route} onChange={setRoute} />
+      <main className="main">
+        {route === 'dashboard' && <Dashboard />}
+        {route === 'files' && <FilesPage />}
+        {route === 'traces' && <TraceViewer />}
+      </main>
     </div>
   );
 }

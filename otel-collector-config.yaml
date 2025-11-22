@@ -1,0 +1,40 @@
+receivers:
+  otlp:
+    protocols:
+      http: {}
+      grpc: {}
+
+exporters:
+  prometheus:
+    endpoint: "0.0.0.0:8888"
+  logging:
+    loglevel: debug
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      exporters: [logging]
+    metrics:
+      receivers: [otlp]
+      exporters: [prometheus, logging]
+receivers:
+  otlp:
+    protocols:
+      http:
+      grpc:
+
+exporters:
+  jaeger:
+    endpoint: "http://jaeger:14268/api/traces"  # internal Docker network
+  prometheus:
+    endpoint: "0.0.0.0:8888"
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      exporters: [jaeger]
+    metrics:
+      receivers: [otlp]
+      exporters: [prometheus]

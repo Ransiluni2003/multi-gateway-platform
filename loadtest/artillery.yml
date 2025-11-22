@@ -1,0 +1,22 @@
+config:
+  target: "http://host.docker.internal:5000"
+  phases:
+    - duration: 60
+      arrivalRate: 100
+      name: "Warm-up"
+    - duration: 120
+      arrivalRate: 1000
+      name: "Sustained 1000 rps"
+  defaults:
+    headers:
+      Content-Type: application/json
+
+scenarios:
+  - name: Payment API flood
+    flow:
+      - post:
+          url: "/api/payments/pay"
+          json:
+            amount: 199.99
+            currency: "USD"
+            source: "loadtest"
