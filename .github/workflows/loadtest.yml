@@ -16,6 +16,11 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
+      - name: Show current directory and files
+        run: |
+          pwd
+          ls -l
+
       - name: Build and bring up services (CI-light)
         run: |
           docker compose -f docker-compose.yml -f docker-compose.override.yml up -d --build --scale worker=2
