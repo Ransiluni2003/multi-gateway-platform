@@ -180,15 +180,50 @@ app.get("/api/files/download-url", async (req: Request, res: Response) => {
   try {
     const { key } = req.query;
     if (!key) return res.status(400).json({ error: "file key required" });
+    // Optional `expires` query param (seconds). Clamp to safe bounds (1 minute - 1 hour).
+    const expiresParam = req.query.expires;
+    let expiresSeconds = 60 * 15; // default 15 minutes
+    if (typeof expiresParam === 'string') {
+      const p = parseInt(expiresParam, 10);
+      if (!isNaN(p)) expiresSeconds = p;
+    }
+    expiresSeconds = Math.max(60, Math.min(expiresSeconds, 60 * 60));
 
     const { data, error } = await supabase.storage
       .from(STORAGE_BUCKET)
-      .createSignedUrl(key as string, 60 * 15);
+      .createSignedUrl(key as string, expiresSeconds);
 
-    if (error) throw error;
+    if (error || !data || !((data as any).signedUrl)) {
+      logger.error("Supabase createSignedUrl failed", { key, expiresSeconds, error: error?.message || error });
+      Sentry.captureException(error || new Error('Signed URL missing'));
+      return res.status(500).json({ error: "Server error generating download URL" });
+    }
 
-    logger.info("Generated Supabase signed download URL", { key });
-    res.json({ downloadUrl: data.signedUrl });
+    const signedUrl = (data as any).signedUrl;
+    const expiresAt = Date.now() + expiresSeconds * 1000;
+
+    // Optional verification: perform a HEAD request to the signed URL to ensure it's valid now.
+    const verifySignedUrl = (process.env.VERIFY_SIGNED_URL || 'true').toLowerCase() !== 'false';
+    if (verifySignedUrl) {
+      try {
+        const headResp = await axios.head(signedUrl, { timeout: 5000 });
+        if (!(headResp.status >= 200 && headResp.status < 400)) {
+          logger.error("Signed URL verification failed (non-2xx)", { key, signedUrl, status: headResp.status });
+          Sentry.captureException(new Error(`Signed URL verification failed: ${headResp.status}`));
+          return res.status(502).json({ error: "Signed URL verification failed" });
+        }
+      } catch (verErr: any) {
+        // If the request fails (network error, expired URL), log and return an error so callers know the URL isn't usable.
+        logger.error("Signed URL verification error", { key, error: verErr?.message || String(verErr) });
+        Sentry.captureException(verErr);
+        return res.status(502).json({ error: "Signed URL verification failed" });
+      }
+    } else {
+      logger.info('Signed URL verification skipped by VERIFY_SIGNED_URL=false');
+    }
+
+    logger.info("Generated Supabase signed download URL", { key, expiresSeconds, expiresAt });
+    res.json({ downloadUrl: signedUrl, expiresAt });
   } catch (err: any) {
     logger.error("Supabase download URL failed", { error: err.message });
     Sentry.captureException(err);

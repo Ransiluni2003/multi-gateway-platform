@@ -1,0 +1,475 @@
+{
+  "aggregate": {
+    "counters": {
+      "vusers.created_by_name.Payment API flood": 63223,
+      "vusers.created": 126000,
+      "http.requests": 126000,
+      "vusers.created_by_name.Mixed API traffic": 62777,
+      "plugins.metrics-by-endpoint./api/payments/pay.errors.ETIMEDOUT": 63223,
+      "errors.ETIMEDOUT": 126000,
+      "vusers.failed": 126000,
+      "plugins.metrics-by-endpoint.{{ endpoint }}.errors.ETIMEDOUT": 62777
+    },
+    "rates": {
+      "http.request_rate": 648
+    },
+    "firstCounterAt": 1764176006955,
+    "lastCounterAt": 1764176197477,
+    "firstMetricAt": 1764176006955,
+    "lastMetricAt": 1764176197477,
+    "period": 1764176190000,
+    "summaries": {},
+    "histograms": {}
+  },
+  "intermediate": [
+    {
+      "counters": {
+        "vusers.created_by_name.Payment API flood": 151,
+        "vusers.created": 278,
+        "http.requests": 278,
+        "vusers.created_by_name.Mixed API traffic": 127
+      },
+      "rates": {
+        "http.request_rate": 100
+      },
+      "http.request_rate": null,
+      "firstCounterAt": 1764176006955,
+      "lastCounterAt": 1764176009990,
+      "firstMetricAt": 1764176006955,
+      "lastMetricAt": 1764176009990,
+      "period": "1764176000000",
+      "summaries": {},
+      "histograms": {}
+    },
+    {
+      "counters": {
+        "vusers.created_by_name.Payment API flood": 501,
+        "vusers.created": 1000,
+        "http.requests": 1000,
+        "vusers.created_by_name.Mixed API traffic": 499,
+        "plugins.metrics-by-endpoint./api/payments/pay.errors.ETIMEDOUT": 151,
+        "errors.ETIMEDOUT": 278,
+        "vusers.failed": 278,
+        "plugins.metrics-by-endpoint.{{ endpoint }}.errors.ETIMEDOUT": 127
+      },
+      "rates": {
+        "http.request_rate": 100
+      },
+      "http.request_rate": null,
+      "firstCounterAt": 1764176010002,
+      "lastCounterAt": 1764176019990,
+      "firstMetricAt": 1764176010002,
+      "lastMetricAt": 1764176019990,
+      "period": "1764176010000",
+      "summaries": {},
+      "histograms": {}
+    },
+    {
+      "counters": {
+        "vusers.created_by_name.Mixed API traffic": 512,
+        "vusers.created": 1000,
+        "http.requests": 1000,
+        "plugins.metrics-by-endpoint./api/payments/pay.errors.ETIMEDOUT": 501,
+        "errors.ETIMEDOUT": 1000,
+        "vusers.failed": 1000,
+        "vusers.created_by_name.Payment API flood": 488,
+        "plugins.metrics-by-endpoint.{{ endpoint }}.errors.ETIMEDOUT": 499
+      },
+      "rates": {
+        "http.request_rate": 100
+      },
+      "http.request_rate": null,
+      "firstCounterAt": 1764176020002,
+      "lastCounterAt": 1764176029991,
+      "firstMetricAt": 1764176020002,
+      "lastMetricAt": 1764176029991,
+      "period": "1764176020000",
+      "summaries": {},
+      "histograms": {}
+    },
+    {
+      "counters": {
+        "vusers.created_by_name.Mixed API traffic": 509,
+        "vusers.created": 1000,
+        "http.requests": 1000,
+        "plugins.metrics-by-endpoint.{{ endpoint }}.errors.ETIMEDOUT": 512,
+        "errors.ETIMEDOUT": 1000,
+        "vusers.failed": 1000,
+        "plugins.metrics-by-endpoint./api/payments/pay.errors.ETIMEDOUT": 488,
+        "vusers.created_by_name.Payment API flood": 491
+      },
+      "rates": {
+        "http.request_rate": 100
+      },
+      "http.request_rate": null,
+      "firstCounterAt": 1764176030002,
+      "lastCounterAt": 1764176039990,
+      "firstMetricAt": 1764176030002,
+      "lastMetricAt": 1764176039990,
+      "period": "1764176030000",
+      "summaries": {},
+      "histograms": {}
+    },
+    {
+      "counters": {
+        "vusers.created_by_name.Mixed API traffic": 491,
+        "vusers.created": 1000,
+        "http.requests": 1000,
+        "plugins.metrics-by-endpoint.{{ endpoint }}.errors.ETIMEDOUT": 509,
+        "errors.ETIMEDOUT": 1000,
+        "vusers.failed": 1000,
+        "plugins.metrics-by-endpoint./api/payments/pay.errors.ETIMEDOUT": 491,
+        "vusers.created_by_name.Payment API flood": 509
+      },
+      "rates": {
+        "http.request_rate": 100
+      },
+      "http.request_rate": null,
+      "firstCounterAt": 1764176040002,
+      "lastCounterAt": 1764176049990,
+      "firstMetricAt": 1764176040002,
+      "lastMetricAt": 1764176049990,
+      "period": "1764176040000",
+      "summaries": {},
+      "histograms": {}
+    },
+    {
+      "counters": {
+        "vusers.created_by_name.Payment API flood": 513,
+        "vusers.created": 1000,
+        "http.requests": 1000,
+        "plugins.metrics-by-endpoint.{{ endpoint }}.errors.ETIMEDOUT": 491,
+        "errors.ETIMEDOUT": 1000,
+        "vusers.failed": 1000,
+        "vusers.created_by_name.Mixed API traffic": 487,
+        "plugins.metrics-by-endpoint./api/payments/pay.errors.ETIMEDOUT": 509
+      },
+      "rates": {
+        "http.request_rate": 100
+      },
+      "http.request_rate": null,
+      "firstCounterAt": 1764176050002,
+      "lastCounterAt": 1764176059989,
+      "firstMetricAt": 1764176050002,
+      "lastMetricAt": 1764176059989,
+      "period": "1764176050000",
+      "summaries": {},
+      "histograms": {}
+    },
+    {
+      "counters": {
+        "vusers.created_by_name.Payment API flood": 1777,
+        "vusers.created": 3555,
+        "http.requests": 3553,
+        "plugins.metrics-by-endpoint./api/payments/pay.errors.ETIMEDOUT": 513,
+        "errors.ETIMEDOUT": 1000,
+        "vusers.failed": 1000,
+        "plugins.metrics-by-endpoint.{{ endpoint }}.errors.ETIMEDOUT": 487,
+        "vusers.created_by_name.Mixed API traffic": 1778
+      },
+      "rates": {
+        "http.request_rate": 356
+      },
+      "http.request_rate": null,
+      "firstCounterAt": 1764176060002,
+      "lastCounterAt": 1764176069999,
+      "firstMetricAt": 1764176060002,
+      "lastMetricAt": 1764176069999,
+      "period": "1764176060000",
+      "summaries": {},
+      "histograms": {}
+    },
+    {
+      "counters": {
+        "vusers.created_by_name.Payment API flood": 4971,
+        "vusers.created": 10000,
+        "http.requests": 10000,
+        "vusers.created_by_name.Mixed API traffic": 5029,
+        "plugins.metrics-by-endpoint./api/payments/pay.errors.ETIMEDOUT": 1776,
+        "errors.ETIMEDOUT": 3553,
+        "vusers.failed": 3553,
+        "plugins.metrics-by-endpoint.{{ endpoint }}.errors.ETIMEDOUT": 1777
+      },
+      "rates": {
+        "http.request_rate": 1000
+      },
+      "http.request_rate": null,
+      "firstCounterAt": 1764176070000,
+      "lastCounterAt": 1764176079999,
+      "firstMetricAt": 1764176070000,
+      "lastMetricAt": 1764176079999,
+      "period": "1764176070000",
+      "summaries": {},
+      "histograms": {}
+    },
+    {
+      "counters": {
+        "vusers.created_by_name.Payment API flood": 5085,
+        "vusers.created": 9999,
+        "http.requests": 10001,
+        "plugins.metrics-by-endpoint./api/payments/pay.errors.ETIMEDOUT": 4970,
+        "errors.ETIMEDOUT": 10000,
+        "vusers.failed": 10000,
+        "vusers.created_by_name.Mixed API traffic": 4914,
+        "plugins.metrics-by-endpoint.{{ endpoint }}.errors.ETIMEDOUT": 5030
+      },
+      "rates": {
+        "http.request_rate": 1000
+      },
+      "http.request_rate": null,
+      "firstCounterAt": 1764176080000,
+      "lastCounterAt": 1764176089999,
+      "firstMetricAt": 1764176080000,
+      "lastMetricAt": 1764176089999,
+      "period": "1764176080000",
+      "summaries": {},
+      "histograms": {}
+    },
+    {
+      "counters": {
+        "vusers.created_by_name.Payment API flood": 4953,
+        "vusers.created": 10001,
+        "http.requests": 10000,
+        "plugins.metrics-by-endpoint./api/payments/pay.errors.ETIMEDOUT": 5087,
+        "errors.ETIMEDOUT": 10000,
+        "vusers.failed": 10000,
+        "plugins.metrics-by-endpoint.{{ endpoint }}.errors.ETIMEDOUT": 4913,
+        "vusers.created_by_name.Mixed API traffic": 5048
+      },
+      "rates": {
+        "http.request_rate": 1000
+      },
+      "http.request_rate": null,
+      "firstCounterAt": 1764176090000,
+      "lastCounterAt": 1764176099999,
+      "firstMetricAt": 1764176090000,
+      "lastMetricAt": 1764176099999,
+      "period": "1764176090000",
+      "summaries": {},
+      "histograms": {}
+    },
+    {
+      "counters": {
+        "vusers.created_by_name.Mixed API traffic": 4946,
+        "vusers.created": 9982,
+        "http.requests": 9979,
+        "plugins.metrics-by-endpoint./api/payments/pay.errors.ETIMEDOUT": 4947,
+        "errors.ETIMEDOUT": 9992,
+        "vusers.failed": 9992,
+        "vusers.created_by_name.Payment API flood": 5036,
+        "plugins.metrics-by-endpoint.{{ endpoint }}.errors.ETIMEDOUT": 5045
+      },
+      "rates": {
+        "http.request_rate": 1000
+      },
+      "http.request_rate": null,
+      "firstCounterAt": 1764176100000,
+      "lastCounterAt": 1764176109999,
+      "firstMetricAt": 1764176100000,
+      "lastMetricAt": 1764176109999,
+      "period": "1764176100000",
+      "summaries": {},
+      "histograms": {}
+    },
+    {
+      "counters": {
+        "http.requests": 10020,
+        "vusers.created_by_name.Mixed API traffic": 5027,
+        "vusers.created": 10018,
+        "plugins.metrics-by-endpoint.{{ endpoint }}.errors.ETIMEDOUT": 4947,
+        "errors.ETIMEDOUT": 9988,
+        "vusers.failed": 9988,
+        "plugins.metrics-by-endpoint./api/payments/pay.errors.ETIMEDOUT": 5041,
+        "vusers.created_by_name.Payment API flood": 4991
+      },
+      "rates": {
+        "http.request_rate": 1004
+      },
+      "http.request_rate": null,
+      "firstCounterAt": 1764176110000,
+      "lastCounterAt": 1764176119999,
+      "firstMetricAt": 1764176110000,
+      "lastMetricAt": 1764176119999,
+      "period": "1764176110000",
+      "summaries": {},
+      "histograms": {}
+    },
+    {
+      "counters": {
+        "plugins.metrics-by-endpoint.{{ endpoint }}.errors.ETIMEDOUT": 5026,
+        "errors.ETIMEDOUT": 10014,
+        "vusers.failed": 10014,
+        "vusers.created_by_name.Payment API flood": 5070,
+        "vusers.created": 9995,
+        "http.requests": 9995,
+        "vusers.created_by_name.Mixed API traffic": 4925,
+        "plugins.metrics-by-endpoint./api/payments/pay.errors.ETIMEDOUT": 4988
+      },
+      "rates": {
+        "http.request_rate": 1000
+      },
+      "http.request_rate": null,
+      "firstCounterAt": 1764176120000,
+      "lastCounterAt": 1764176129999,
+      "firstMetricAt": 1764176120000,
+      "lastMetricAt": 1764176129999,
+      "period": "1764176120000",
+      "summaries": {},
+      "histograms": {}
+    },
+    {
+      "counters": {
+        "vusers.created_by_name.Mixed API traffic": 4950,
+        "vusers.created": 10005,
+        "http.requests": 10006,
+        "plugins.metrics-by-endpoint./api/payments/pay.errors.ETIMEDOUT": 5072,
+        "errors.ETIMEDOUT": 10001,
+        "vusers.failed": 10001,
+        "vusers.created_by_name.Payment API flood": 5055,
+        "plugins.metrics-by-endpoint.{{ endpoint }}.errors.ETIMEDOUT": 4929
+      },
+      "rates": {
+        "http.request_rate": 1000
+      },
+      "http.request_rate": null,
+      "firstCounterAt": 1764176130000,
+      "lastCounterAt": 1764176139999,
+      "firstMetricAt": 1764176130000,
+      "lastMetricAt": 1764176139999,
+      "period": "1764176130000",
+      "summaries": {},
+      "histograms": {}
+    },
+    {
+      "counters": {
+        "vusers.created_by_name.Mixed API traffic": 4900,
+        "vusers.created": 10000,
+        "http.requests": 9999,
+        "plugins.metrics-by-endpoint.{{ endpoint }}.errors.ETIMEDOUT": 4948,
+        "errors.ETIMEDOUT": 10005,
+        "vusers.failed": 10005,
+        "plugins.metrics-by-endpoint./api/payments/pay.errors.ETIMEDOUT": 5057,
+        "vusers.created_by_name.Payment API flood": 5100
+      },
+      "rates": {
+        "http.request_rate": 1000
+      },
+      "http.request_rate": null,
+      "firstCounterAt": 1764176140000,
+      "lastCounterAt": 1764176149999,
+      "firstMetricAt": 1764176140000,
+      "lastMetricAt": 1764176149999,
+      "period": "1764176140000",
+      "summaries": {},
+      "histograms": {}
+    },
+    {
+      "counters": {
+        "vusers.created_by_name.Mixed API traffic": 4981,
+        "vusers.created": 10000,
+        "http.requests": 10000,
+        "plugins.metrics-by-endpoint.{{ endpoint }}.errors.ETIMEDOUT": 4900,
+        "errors.ETIMEDOUT": 10000,
+        "vusers.failed": 10000,
+        "plugins.metrics-by-endpoint./api/payments/pay.errors.ETIMEDOUT": 5100,
+        "vusers.created_by_name.Payment API flood": 5019
+      },
+      "rates": {
+        "http.request_rate": 1000
+      },
+      "http.request_rate": null,
+      "firstCounterAt": 1764176150000,
+      "lastCounterAt": 1764176159999,
+      "firstMetricAt": 1764176150000,
+      "lastMetricAt": 1764176159999,
+      "period": "1764176150000",
+      "summaries": {},
+      "histograms": {}
+    },
+    {
+      "counters": {
+        "vusers.created_by_name.Payment API flood": 4968,
+        "vusers.created": 10000,
+        "http.requests": 10000,
+        "plugins.metrics-by-endpoint.{{ endpoint }}.errors.ETIMEDOUT": 4982,
+        "errors.ETIMEDOUT": 10000,
+        "vusers.failed": 10000,
+        "vusers.created_by_name.Mixed API traffic": 5032,
+        "plugins.metrics-by-endpoint./api/payments/pay.errors.ETIMEDOUT": 5018
+      },
+      "rates": {
+        "http.request_rate": 1000
+      },
+      "http.request_rate": null,
+      "firstCounterAt": 1764176160000,
+      "lastCounterAt": 1764176169999,
+      "firstMetricAt": 1764176160000,
+      "lastMetricAt": 1764176169999,
+      "period": "1764176160000",
+      "summaries": {},
+      "histograms": {}
+    },
+    {
+      "counters": {
+        "vusers.created_by_name.Mixed API traffic": 5059,
+        "vusers.created": 10000,
+        "http.requests": 10000,
+        "plugins.metrics-by-endpoint./api/payments/pay.errors.ETIMEDOUT": 4968,
+        "errors.ETIMEDOUT": 10000,
+        "vusers.failed": 10000,
+        "vusers.created_by_name.Payment API flood": 4941,
+        "plugins.metrics-by-endpoint.{{ endpoint }}.errors.ETIMEDOUT": 5032
+      },
+      "rates": {
+        "http.request_rate": 1000
+      },
+      "http.request_rate": null,
+      "firstCounterAt": 1764176170000,
+      "lastCounterAt": 1764176179999,
+      "firstMetricAt": 1764176170000,
+      "lastMetricAt": 1764176179999,
+      "period": "1764176170000",
+      "summaries": {},
+      "histograms": {}
+    },
+    {
+      "counters": {
+        "vusers.created_by_name.Payment API flood": 3604,
+        "vusers.created": 7167,
+        "http.requests": 7169,
+        "plugins.metrics-by-endpoint.{{ endpoint }}.errors.ETIMEDOUT": 5057,
+        "errors.ETIMEDOUT": 9996,
+        "vusers.failed": 9996,
+        "plugins.metrics-by-endpoint./api/payments/pay.errors.ETIMEDOUT": 4939,
+        "vusers.created_by_name.Mixed API traffic": 3563
+      },
+      "rates": {
+        "http.request_rate": 1000
+      },
+      "http.request_rate": null,
+      "firstCounterAt": 1764176180000,
+      "lastCounterAt": 1764176189996,
+      "firstMetricAt": 1764176180000,
+      "lastMetricAt": 1764176189996,
+      "period": "1764176180000",
+      "summaries": {},
+      "histograms": {}
+    },
+    {
+      "counters": {
+        "plugins.metrics-by-endpoint.{{ endpoint }}.errors.ETIMEDOUT": 3566,
+        "errors.ETIMEDOUT": 7173,
+        "vusers.failed": 7173,
+        "plugins.metrics-by-endpoint./api/payments/pay.errors.ETIMEDOUT": 3607
+      },
+      "rates": {},
+      "firstCounterAt": 1764176190011,
+      "lastCounterAt": 1764176197477,
+      "firstMetricAt": 1764176190011,
+      "lastMetricAt": 1764176197477,
+      "period": "1764176190000",
+      "summaries": {},
+      "histograms": {}
+    }
+  ]
+}

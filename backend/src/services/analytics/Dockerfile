@@ -8,7 +8,7 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-FROM node:18-alpine AS runner
+FROM node:20.10.0-alpine AS runner
 WORKDIR /app
 
 # Install production dependencies only

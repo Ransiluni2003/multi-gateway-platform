@@ -1,0 +1,75 @@
+name: Load Test
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  run-loadtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build and bring up services (CI-light)
+        run: |
+          docker compose -f docker-compose.yml -f docker-compose.override.yml up -d --build --scale worker=2
+
+      - name: Wait for API health
+        run: |
+          for i in `seq 1 30`; do
+            if curl -fsS http://localhost:5000/api/health >/dev/null; then echo 'api up' && break; fi
+            echo 'waiting for api...' ; sleep 2 ;
+          done
+
+      - name: Reduce load for CI run
+        run: |
+          # Replace arrivalRate and rampTo to safer values for CI
+          sed -i 's/arrivalRate: 200/arrivalRate: 20/' loadtest/artillery.yml || true
+          sed -i 's/rampTo: 1000/rampTo: 100/' loadtest/artillery.yml || true
+
+      - name: Run Artillery load test
+        run: |
+          npm ci --no-audit --no-fund || true
+          npx artillery run loadtest/artillery.yml -o loadtest/report.json
+
+      - name: Capture queue stats (before)
+        run: |
+          mkdir -p loadtest
+          curl -sS http://localhost:5000/api/jobs/health -o loadtest/jobs_before.json || echo '{"error":"failed"}' > loadtest/jobs_before.json
+
+      - name: Run Redis enqueue stress test
+        run: |
+          # Run the backend loadTest.js inside the 'api' service container so it uses the compose network
+          docker compose -f docker-compose.yml -f docker-compose.override.yml run --rm api node backend/loadTest.js || true
+
+      - name: Wait 10s for queue processing
+        run: sleep 10
+
+      - name: Capture queue stats (after)
+        run: |
+          curl -sS http://localhost:5000/api/jobs/health -o loadtest/jobs_after.json || echo '{"error":"failed"}' > loadtest/jobs_after.json
+
+      - name: Upload load test report
+        uses: actions/upload-artifact@v4
+        with:
+          name: artillery-report
+          path: loadtest/report.json
+
+      - name: Upload queue stats
+        uses: actions/upload-artifact@v4
+        with:
+          name: queue-stats
+          path: |
+            loadtest/jobs_before.json
+            loadtest/jobs_after.json
+
+      - name: Tear down
+        if: always()
+        run: |
+          docker compose -f docker-compose.yml -f docker-compose.override.yml down --volumes

@@ -1,0 +1,14 @@
+config:
+  target: "http://localhost:5000"
+  phases:
+    - duration: 60
+      arrivalRate: 1000
+      name: "1k concurrent users"
+scenarios:
+  - flow:
+      - post:
+          url: "/api/payments/pay"
+          json:
+            amount: 100
+            method: "card"
+

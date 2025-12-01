@@ -1,5 +1,5 @@
 # Use a lightweight Node.js base image
-FROM node:18-alpine AS builder
+FROM node:20.10.0-alpine AS builder
 WORKDIR /app
 
 # Install full deps for build

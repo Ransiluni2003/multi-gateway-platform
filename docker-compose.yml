@@ -1,0 +1,144 @@
+
+
+  version: "3.9"
+
+  services:
+    api:
+      build:
+        context: ./backend
+        dockerfile: ./src/services/api/Dockerfile
+      container_name: api
+      ports:
+        - "5000:5000"
+      env_file:
+        - ./.env
+      depends_on:
+        - payments
+        - analytics
+        - notifications
+        - redis
+        - mongo
+      networks:
+        - backend-network
+
+    payments:
+      build:
+        context: ./backend
+        dockerfile: ./src/services/payments/Dockerfile
+      container_name: payments
+      ports:
+        - "4001:4001"
+      env_file:
+        - ./.env
+      depends_on:
+        - mongo
+      networks:
+        - backend-network
+
+    mock-payment-gateway:
+      build:
+        context: ./mock-payment
+        dockerfile: ./Dockerfile
+      container_name: mock-payment-gateway
+      ports:
+        - "5001:5000"
+      env_file:
+        - ./.env
+      networks:
+        - backend-network
+
+    notifications:
+      build:
+        context: ./backend
+        dockerfile: ./src/services/notifications/Dockerfile
+      container_name: notifications
+      ports:
+        - "4003:4003"
+      env_file:
+        - ./.env
+      depends_on:
+        - redis
+      networks:
+        - backend-network
+
+    worker:
+      build:
+        context: ./backend
+        dockerfile: ./worker/Dockerfile
+      command: ["node", "dist/worker.js"]
+      depends_on:
+        - redis
+        - mongo
+      environment:
+        - WORKER_METRICS_PORT=9100
+        # Optional tuning for concurrency per-instance. Adjust to match CPU cores.
+        - WORKER_CONCURRENCY=2
+      networks:
+        - backend-network
+      deploy:
+        replicas: 5
+
+    redis:
+      image: redis:7-alpine
+      container_name: redis
+      ports:
+        - "6379:6379"
+      networks:
+        - backend-network
+
+    analytics:
+      build:
+        context: ./backend
+        dockerfile: ./src/services/analytics/Dockerfile
+      container_name: analytics
+      ports:
+        - "4002:4002"
+      env_file:
+        - ./.env
+      depends_on:
+        - mongo
+      networks:
+        - backend-network
+
+    mongo:
+      image: mongo:6
+      container_name: mongo
+      environment:
+        - MONGO_INITDB_ROOT_USERNAME=root
+        - MONGO_INITDB_ROOT_PASSWORD=rootpassword
+        - MONGO_INITDB_DATABASE=multi_gateway_db
+        - MONGO_USER=it23143654_db_user
+        - MONGO_PASS=Company123
+      ports:
+        - "27017:27017"
+      volumes:
+        - mongo-data:/data/db
+      networks:
+        - backend-network
+
+    prometheus:
+      image: prom/prometheus:latest
+      container_name: prometheus
+      ports:
+        - "9090:9090"
+      volumes:
+        - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+        - ./prometheus/file_sd:/etc/prometheus/file_sd:rw
+      networks:
+        - backend-network
+
+    grafana:
+      image: grafana/grafana:latest
+      container_name: grafana
+      ports:
+        - "3300:3000"
+      depends_on:
+        - prometheus
+      networks:
+        - backend-network
+
+volumes:
+  mongo-data:
+
+networks:
+  backend-network:

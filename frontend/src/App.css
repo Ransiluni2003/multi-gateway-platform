@@ -1,76 +1,118 @@
+
+:root {
+  --bg: #0f1724;
+  --card: #0b1220;
+  --accent: #7c3aed;
+  --muted: #94a3b8;
+  --glass: rgba(255,255,255,0.03);
+}
+body {
+  background: linear-gradient(180deg,#071029 0%, #061428 100%);
+  color: #e6eef8;
+  font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+  margin: 0;
+}
 .App {
-  text-align: center;
-}
-
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
-}
-
-.App-header {
-  background-color: #282c34;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+}
+.nav {
+  height: 64px;
+  display: flex;
   align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
+  gap: 24px;
+  padding: 0 20px;
+  background: rgba(0,0,0,0.18);
+  border-bottom: 1px solid rgba(255,255,255,0.03);
 }
-
-.App-link {
-  color: #61dafb;
+.nav .brand {
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--accent);
 }
-
-@keyframes App-logo-spin {
-  :root{
-    --bg: #0f1724;
-    --card: #0b1220;
-    --accent: #7c3aed;
-    --muted: #94a3b8;
-    --glass: rgba(255,255,255,0.03);
+.nav .nav-links {
+  display: flex;
+  gap: 12px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.nav .nav-links li {
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--muted);
+  transition: background 0.2s, color 0.2s;
+}
+.nav .nav-links li.active {
+  background: linear-gradient(90deg, rgba(124,58,237,0.12), rgba(124,58,237,0.06));
+  color: #fff;
+}
+.nav .user {
+  margin-left: auto;
+  color: var(--muted);
+}
+.main {
+  padding: 28px;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+}
+.dashboard-header h1 {
+  margin: 0;
+  font-size: 1.6rem;
+}
+.dashboard-header .subtitle {
+  color: var(--muted);
+  margin-top: 6px;
+}
+.cards {
+  display: grid;
+  grid-template-columns: repeat(3,1fr);
+  gap: 16px;
+  margin-top: 18px;
+}
+.card {
+  background: var(--card);
+  padding: 18px;
+  border-radius: 12px;
+  box-shadow: 0 4px 18px rgba(2,6,23,0.6);
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+.card:hover {
+  box-shadow: 0 8px 32px rgba(124,58,237,0.12);
+  transform: translateY(-2px) scale(1.01);
+}
+.card h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--muted);
+}
+.card .metric {
+  font-size: 1.6rem;
+  margin-top: 8px;
+  font-weight: 600;
+}
+.card .meta {
+  color: var(--muted);
+  margin-top: 6px;
+  font-size: 0.95rem;
+}
+.chart-section {
+  margin-top: 22px;
+}
+.chart-card {
+  background: var(--card);
+  padding: 18px;
+  border-radius: 12px;
+  box-shadow: 0 4px 18px rgba(2,6,23,0.6);
+}
+@media (max-width: 880px) {
+  .cards {
+    grid-template-columns: 1fr;
   }
-
-  *{box-sizing:border-box}
-  body{background:linear-gradient(180deg,#071029 0%, #061428 100%); color:#e6eef8}
-
-  .App{min-height:100vh; display:flex; flex-direction:column}
-
-  .nav{
-    height:64px; display:flex; align-items:center; gap:24px; padding:0 20px; background:rgba(0,0,0,0.18); border-bottom:1px solid rgba(255,255,255,0.03);
+  .main {
+    padding: 12px;
   }
-  .nav .brand{font-weight:700; font-size:1.1rem; color:var(--accent)}
-  .nav .nav-links{display:flex; gap:12px; list-style:none; margin:0; padding:0}
-  .nav .nav-links li{padding:8px 12px; border-radius:8px; cursor:pointer; color:var(--muted)}
-  .nav .nav-links li.active{background:linear-gradient(90deg, rgba(124,58,237,0.12), rgba(124,58,237,0.06)); color:#fff}
-  .nav .user{margin-left:auto; color:var(--muted)}
-
-  .main{padding:28px; max-width:1200px; margin:0 auto; width:100%}
-
-  .dashboard-header h1{margin:0; font-size:1.6rem}
-  .dashboard-header .subtitle{color:var(--muted); margin-top:6px}
-
-  .cards{display:grid; grid-template-columns: repeat(3,1fr); gap:16px; margin-top:18px}
-  .card{background:var(--card); padding:18px; border-radius:12px; box-shadow:0 4px 18px rgba(2,6,23,0.6)}
-  .card h3{margin:0; font-size:0.95rem; color:var(--muted)}
-  .card .metric{font-size:1.6rem; margin-top:8px}
-  .card .meta{color:var(--muted); margin-top:6px}
-
-  .chart-section{margin-top:22px}
-  .chart-card{background:var(--card); padding:18px; border-radius:12px}
-
-  .files-page .page-header{display:flex; align-items:center; justify-content:space-between}
-  .files-list{margin-top:12px}
-
-  table{width:100%; border-collapse:collapse}
-  th, td{padding:8px; border-bottom:1px solid rgba(255,255,255,0.03)}
-
-  @media (max-width:880px){
-    .cards{grid-template-columns:1fr}
-  }
+}

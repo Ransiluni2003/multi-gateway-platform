@@ -1,23 +1,23 @@
-FROM node:18-alpine AS builder
+FROM node:20.10.0-alpine AS builder
 WORKDIR /app
 
-# Install full deps and build
+# Install dependencies and build
 COPY package*.json ./
 RUN npm ci
 COPY . .
 RUN npm run build
 
-FROM node:18-alpine AS runner
+FROM node:20.10.0-alpine AS runner
 WORKDIR /app
 
-# Install production deps only
+# Install only production dependencies
 COPY package*.json ./
 RUN npm ci --production
 
-# Copy built output
+# Copy built output from builder
 COPY --from=builder /app/dist ./dist
 
 EXPOSE 5000
 
-# Run compiled gateway API (gateway server lives in dist/gateway/server.js)
+# Run the compiled gateway API (adjust path if needed)
 CMD ["node", "dist/gateway/server.js"]

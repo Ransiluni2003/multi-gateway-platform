@@ -1,9 +1,19 @@
-import { Router } from 'express';
-const router = Router();
+import express from "express";
+import {
+  createStripePayment,
+  stripeWebhook,
+  createPayPalPayment,
+  paypalWebhook,
+} from "../controllers/paymentsController";
 
-router.post('/', (req, res) => {
-  console.log('Payment webhook received:', req.body);
-  res.send('Payment webhook received');
-});
+const router = express.Router();
+
+// Stripe routes
+router.post("/stripe/create", createStripePayment);
+router.post("/stripe/webhook", express.raw({ type: "application/json" }), stripeWebhook);
+
+// PayPal routes
+router.post("/paypal/create", createPayPalPayment);
+router.post("/paypal/webhook", paypalWebhook);
 
 export default router;

@@ -1,0 +1,44 @@
+version: '3.9'
+services:
+  redis-cluster-node-1:
+    image: redis:7
+    command: ["redis-server", "--cluster-enabled", "yes", "--cluster-config-file", "/data/nodes.conf", "--cluster-node-timeout", "5000", "--appendonly", "no", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+    ports:
+      - "7001:6379"
+    volumes:
+      - ./data1:/data
+  redis-cluster-node-2:
+    image: redis:7
+    command: ["redis-server", "--cluster-enabled", "yes", "--cluster-config-file", "/data/nodes.conf", "--cluster-node-timeout", "5000", "--appendonly", "no", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+    ports:
+      - "7002:6379"
+    volumes:
+      - ./data2:/data
+  redis-cluster-node-3:
+    image: redis:7
+    command: ["redis-server", "--cluster-enabled", "yes", "--cluster-config-file", "/data/nodes.conf", "--cluster-node-timeout", "5000", "--appendonly", "no", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+    ports:
+      - "7003:6379"
+    volumes:
+      - ./data3:/data
+  redis-cluster-node-4:
+    image: redis:7
+    command: ["redis-server", "--cluster-enabled", "yes", "--cluster-config-file", "/data/nodes.conf", "--cluster-node-timeout", "5000", "--appendonly", "no", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+    ports:
+      - "7004:6379"
+    volumes:
+      - ./data4:/data
+  redis-cluster-node-5:
+    image: redis:7
+    command: ["redis-server", "--cluster-enabled", "yes", "--cluster-config-file", "/data/nodes.conf", "--cluster-node-timeout", "5000", "--appendonly", "no", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+    ports:
+      - "7005:6379"
+    volumes:
+      - ./data5:/data
+  redis-cluster-node-6:
+    image: redis:7
+    command: ["redis-server", "--cluster-enabled", "yes", "--cluster-config-file", "/data/nodes.conf", "--cluster-node-timeout", "5000", "--appendonly", "no", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+    ports:
+      - "7006:6379"
+    volumes:
+      - ./data6:/data

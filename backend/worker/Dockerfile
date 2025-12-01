@@ -7,7 +7,7 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-FROM node:18-alpine AS runner
+FROM node:20.10.0-alpine AS runner
 WORKDIR /app
 
 # Install production deps only
@@ -24,6 +24,10 @@ COPY --from=builder /app/worker/worker.js ./worker/worker.js
 RUN if [ -f ./dist/services/workers/worker.js ]; then cp ./dist/services/workers/worker.js ./dist/worker.js; fi || true
 
 ENV NODE_ENV=production
+
+# Expose Prometheus metrics port (default 9100)
+ENV WORKER_METRICS_PORT=9100
+EXPOSE 9100
 
 # Start the worker from the compiled dist
 CMD ["node", "dist/worker.js"]

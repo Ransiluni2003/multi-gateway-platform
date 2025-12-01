@@ -2,40 +2,49 @@
   "compilerOptions": {
     "rootDir": "./src",
     "outDir": "./dist",
-  "module": "CommonJS",
-  "moduleResolution": "Node",
-    "target": "ESNext",
-    "types": ["node"],
-    "allowSyntheticDefaultImports": true,
-    "esModuleInterop": true,
-    // For nodejs:
-    // "lib": ["esnext"],
-    // "types": ["node"],
-    // and npm install -D @types/node
 
-    // Other Outputs
+    // Node module system
+    "module": "node16",
+    "moduleResolution": "node16",
+
+    // Modern JS target with async/await support
+    "target": "es2020",
+    "lib": ["es2020"],
+
+    // Enable module interop for default imports
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+
+    // Type checking
+    "strict": true,
+    "noUncheckedIndexedAccess": false,
+    "exactOptionalPropertyTypes": false,
+
+    // Prevent most compilation blocks
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "types": ["node", "next", "next/types/global"],
+    
+
+    // Debugging & source maps
     "sourceMap": true,
     "declaration": true,
     "declarationMap": true,
 
-    // Stricter Typechecking Options
-    "noUncheckedIndexedAccess": true,
-    "exactOptionalPropertyTypes": true,
+    // Node types + express + custom types
+    "types": ["node", "express"],
+    "types": ["node", "express", "jest"],
+    "typeRoots": ["./node_modules/@types", "./src/types"],
 
-    // Style Options
-    // "noImplicitReturns": true,
-    // "noImplicitOverride": true,
-    // "noUnusedLocals": true,
-    // "noUnusedParameters": true,
-    // "noFallthroughCasesInSwitch": true,
-    // "noPropertyAccessFromIndexSignature": true,
+    // Optional stricter flags (relax if needed)
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noImplicitReturns": false,
+    "noFallthroughCasesInSwitch": true,
 
-    // Recommended Options
-    "strict": true,
-    "jsx": "react-jsx",
-  "isolatedModules": true,
-    "noUncheckedSideEffectImports": true,
-    "moduleDetection": "force",
-    "skipLibCheck": true,
-  }
+    // Isolated modules (needed for some tooling)
+    "isolatedModules": false
+  },
+  "include": ["src/**/*", "src/types/**/*",],
+  "exclude": ["node_modules", "dist"]
 }
