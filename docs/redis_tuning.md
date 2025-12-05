@@ -23,8 +23,29 @@ When pushing >1000 RPS and many enqueues the single Redis instance may become th
   - Redis Sentinel + replica groups for availability (does not shard)
 
 6) Lua scripts
-- Replace multi-command workflows with Lua scripts to avoid round-trips and improve atomicity.
 
 7) Testing checklist
-- Run Artillery (or k6) against API while running `redis-cli --stat` and `redis-cli info` in another terminal.
-- Watch `blocked_clients` and `instantaneous_ops_per_sec` to identify saturation.
+
+---
+
+## Advanced Redis Monitoring & Key Metrics
+
+- **Queue Monitoring:**
+  - Use BullMQ/Redis queue stats endpoints or `LLEN <queue>` in `redis-cli` to monitor queue length.
+  - Monitor job latency and retry counts via BullMQ events or Prometheus metrics.
+- **Key Metrics to Track:**
+  - `used_memory_human`, `maxmemory`, `maxmemory_policy` (memory usage and eviction)
+  - `instantaneous_ops_per_sec` (throughput)
+  - `blocked_clients`, `connected_clients` (resource contention)
+  - `total_commands_processed`, `total_net_input_bytes`, `total_net_output_bytes` (workload)
+  - `evicted_keys`, `expired_keys` (key churn)
+  - `cpu_sys`, `cpu_user` (CPU load)
+- **Prometheus/Grafana:**
+  - Use `oliver006/redis_exporter` to collect and visualize these metrics.
+- **Scaling Guidance:**
+  - If queue length grows or memory nears limit, scale worker replicas or increase `maxmemory`.
+  - For high-availability, consider Redis Cluster or Sentinel.
+
+---
+
+_For more, see the official [Redis documentation](https://redis.io/docs/management/)_

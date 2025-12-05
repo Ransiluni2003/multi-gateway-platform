@@ -1,4 +1,4 @@
-import '../App.css';
+import '../src/App.css';
 import NavBar from '../components/NavBar';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

@@ -2,6 +2,7 @@
 import '../App.css';
 import React, { useEffect, useState } from 'react';
 import FraudTrend from '../../components/FraudTrend';
+import NavBar from '@/components/NavBar';
 
 export default function Dashboard() {
   const [data, setData] = useState([]);
@@ -32,6 +33,7 @@ export default function Dashboard() {
     <div className="App">
       <div className="main">
         <div className="dashboard">
+          <NavBar/>
           <header className="dashboard-header">
             <h1>Analytics Dashboard</h1>
             <p className="subtitle">Overview of system metrics, fraud trends and traces</p>

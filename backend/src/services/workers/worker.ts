@@ -68,13 +68,13 @@ myWorker.on('failed', async (job, err) => {
     return;
   }
 
-  console.error(`Job ${job.id} failed: ${err.message}`);
+  console.error(`Job ${job.id} failed: ${(err as Error).message}`);
   jobFailures.inc();
 
   if (job.attemptsMade >= (job.opts.attempts ?? 1)) {
     await dlq.add(`dlq-${job.id}`, {
       original: job.data,
-      error: err.message
+      error: (err as Error).message
     });
     console.log(`Job ${job.id} moved to DLQ`);
     jobDlq.inc();
@@ -83,10 +83,10 @@ myWorker.on('failed', async (job, err) => {
       const fs = require('fs');
       const dlqDir = '/app/dlq';
       if (!fs.existsSync(dlqDir)) fs.mkdirSync(dlqDir, { recursive: true });
-      const line = JSON.stringify({ timestamp: new Date().toISOString(), jobId: job?.id, data: job?.data, error: err?.message || String(err) }) + "\n";
+      const line = JSON.stringify({ timestamp: new Date().toISOString(), jobId: job?.id, data: job?.data, error: (err as Error)?.message || String(err) }) + "\n";
       fs.appendFileSync(dlqDir + '/worker-dlq.jsonl', line, { encoding: 'utf8' });
     } catch (e) {
-      console.error('Failed to write worker DLQ file:', e?.message || String(e));
+      console.error('Failed to write worker DLQ file:', (e as Error)?.message || String(e));
     }
   }
 });

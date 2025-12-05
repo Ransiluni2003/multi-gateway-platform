@@ -1,5 +1,5 @@
 import React from 'react';
-import SupabaseDownloadButton from '../../../components/SupabaseDownloadButton';
+import SupabaseDownloadButton from '../../components/SupabaseDownloadButton';
 
 export default function FileRow({ filePath, fileName }) {
   return (

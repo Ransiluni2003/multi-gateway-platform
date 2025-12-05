@@ -1,4 +1,173 @@
+/* Modern Navigation Bar Styles */
+/* Modern Navigation Bar Styles - Light Green */
+.nav {
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 32px;
+  background: linear-gradient(90deg, #b9fbc0 0%, #34d399 100%);
+  color: #222;
+  box-shadow: 0 2px 8px #0002;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.nav .brand {
+  font-weight: 700;
+  font-size: 1.4rem;
+  color: #059669;
+  letter-spacing: 1px;
+}
+.nav-links {
+  display: flex;
+  gap: 32px;
+}
+.nav-link {
+  color: #222;
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 1.08rem;
+  padding: 8px 18px;
+  border-radius: 8px;
+  transition: background 0.2s, color 0.2s;
+}
+.nav-link:hover, .nav-link.active {
+  background: linear-gradient(90deg, #a7f3d0 0%, #34d399 100%);
+  color: #059669;
+}
+.nav .admin {
+  font-weight: 500;
+  color: #222;
+  background: #b9fbc0;
+  padding: 8px 18px;
+  border-radius: 8px;
+  margin-left: 16px;
+}
+/* Modern Login Page Styles */
+.login {
+  background: linear-gradient(180deg, #18181b 0%, #23234a 100%);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.login h2 {
+  color: #fff;
+  margin-bottom: 24px;
+  font-size: 2rem;
+  font-weight: 700;
+}
+.login input {
+  background: #23234a;
+  color: #e6eef8;
+  border: 1px solid #7c3aed;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 16px;
+  width: 280px;
+  font-size: 1rem;
+  outline: none;
+  transition: border 0.2s;
+}
+.login input:focus {
+  border-color: #a78bfa;
+}
+.login button {
+  background: linear-gradient(90deg, #7c3aed 0%, #18181b 100%);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 32px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 8px #0002;
+  transition: background 0.2s, box-shadow 0.2s;
+}
+.login button:hover:not(:disabled) {
+  background: linear-gradient(90deg, #a78bfa 0%, #7c3aed 100%);
+  box-shadow: 0 4px 18px #7c3aed44;
+}
+.login button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+/* Modern Files/Download Page Styles */
+.files-list {
+  background: var(--card);
+  border-radius: 12px;
+  box-shadow: 0 4px 18px rgba(2,6,23,0.6);
+  padding: 32px;
+  margin-top: 32px;
+}
+.files-list h2 {
+  color: #fff;
+  font-size: 1.4rem;
+  margin-bottom: 24px;
+}
+.files-list ul {
+  list-style: none;
+  padding: 0;
+}
+.files-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--glass);
+  border-radius: 8px;
+  padding: 18px 24px;
+  margin-bottom: 18px;
+  box-shadow: 0 2px 8px #0002;
+}
+.files-list li:last-child {
+  margin-bottom: 0;
+}
+.files-list .file-name {
+  font-weight: 600;
+  color: #e6eef8;
+  font-size: 1.1rem;
+}
+.files-list button {
+  background: linear-gradient(90deg, #7c3aed 0%, #18181b 100%);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 28px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 8px #0002;
+  transition: background 0.2s, box-shadow 0.2s;
+}
+.files-list button:hover:not(:disabled) {
+  background: linear-gradient(90deg, #a78bfa 0%, #7c3aed 100%);
+  box-shadow: 0 4px 18px #7c3aed44;
+}
+.files-list button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.files-list .error {
+  color: #ff4d4f;
+  margin-top: 8px;
+  font-size: 0.98rem;
+}
 
+/* General Card Styles for All Pages */
+.card {
+  background: var(--card);
+  border-radius: 12px;
+  box-shadow: 0 4px 18px rgba(2,6,23,0.6);
+  padding: 18px;
+  margin-bottom: 24px;
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+.card:hover {
+  box-shadow: 0 8px 32px rgba(124,58,237,0.12);
+  transform: translateY(-2px) scale(1.01);
+}
 :root {
   --bg: #0f1724;
   --card: #0b1220;

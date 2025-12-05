@@ -26,6 +26,7 @@ const FraudTrend = ({ data = [] }) => {
   // Support two data shapes:
   // 1) { date, fraudCount, refundRatio }
   // 2) { date, fraud, refund }
+  console.log('FraudTrend data:', data);
   const normalized = data.map((d) => {
     const fraud = d.fraud ?? d.fraudCount ?? 0;
     const refund = d.refund ?? 0;
@@ -90,6 +91,9 @@ const FraudTrend = ({ data = [] }) => {
     },
   };
 
+  if (!normalized.length) {
+    return <div>No fraud/refund data available.</div>;
+  }
   return <Line data={chartData} options={options} />;
 };
 

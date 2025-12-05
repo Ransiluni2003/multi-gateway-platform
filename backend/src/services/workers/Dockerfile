@@ -1,17 +1,19 @@
-FROM node:18-alpine AS builder
+FROM node:20.19.0-alpine AS builder
 WORKDIR /app
 
 # Install full deps and build
-FROM node:20.10.0-alpine
+COPY package*.json ./
+RUN npm config set registry https://registry.npmjs.org/
 RUN npm ci
 COPY . .
 RUN npm run build
 
-FROM node:18-alpine AS runner
+FROM node:20.19.0-alpine AS runner
 WORKDIR /app
 
 # Install production deps only
 COPY package*.json ./
+RUN npm config set registry https://registry.npmjs.org/
 RUN npm ci --production
 
 # Copy built output
