@@ -1,5 +1,6 @@
 "use client";
 import React from "react";
+import TraceViewer from "../../components/TraceViewer";
 
 export default function TracesPage() {
   return (
@@ -9,7 +10,7 @@ export default function TracesPage() {
         <p className="subtitle">System traces and distributed tracing data</p>
       </header>
       <div className="traces-list">
-        <p>Traces will be listed here.</p>
+        <TraceViewer />
       </div>
     </div>
   );

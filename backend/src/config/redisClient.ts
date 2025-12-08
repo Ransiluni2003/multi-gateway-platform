@@ -1,7 +1,8 @@
 import { createClient } from "redis";
 
 export const redisClient = createClient({
-  url: process.env.REDIS_URL || "redis://127.0.0.1:6379",
+  url: process.env.REDIS_URL,
+  password: process.env.REDIS_PASSWORD || undefined,
 });
 
 redisClient.on("connect", () => console.log("✅ Redis connected"));

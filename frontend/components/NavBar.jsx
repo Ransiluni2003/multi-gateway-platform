@@ -1,7 +1,10 @@
+"use client";
 import React from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 
-export default function NavBar({ active }) {
+export default function NavBar() {
+  const pathname = usePathname();
   return (
     <nav style={{
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -10,9 +13,15 @@ export default function NavBar({ active }) {
     }}>
       <div style={{ fontWeight: 700, fontSize: 22 }}>Multi-Gateway</div>
       <div style={{ display: 'flex', gap: 24 }}>
-           <Link href="/dashboard" legacyBehavior><a style={{ color: active === 'dashboard' ? '#a78bfa' : '#fff', textDecoration: 'none', fontWeight: 500 }}>Dashboard</a></Link>
-        <Link href="/files" legacyBehavior><a style={{ color: active === 'files' ? '#a78bfa' : '#fff', textDecoration: 'none', fontWeight: 500 }}>Files</a></Link>
-        <Link href="/traces" legacyBehavior><a style={{ color: active === 'traces' ? '#a78bfa' : '#fff', textDecoration: 'none', fontWeight: 500 }}>Traces</a></Link>
+        <Link href="/dashboard" legacyBehavior>
+          <a className={pathname === '/dashboard' ? 'active' : ''} style={{ textDecoration: 'none', transition: 'background 0.2s' }}>Dashboard</a>
+        </Link>
+        <Link href="/files" legacyBehavior>
+          <a className={pathname === '/files' ? 'active' : ''} style={{ textDecoration: 'none', transition: 'background 0.2s' }}>Files</a>
+        </Link>
+        <Link href="/traces" legacyBehavior>
+          <a className={pathname === '/traces' ? 'active' : ''} style={{ textDecoration: 'none', transition: 'background 0.2s' }}>Traces</a>
+        </Link>
       </div>
       <div style={{ fontWeight: 500 }}>Admin</div>
     </nav>

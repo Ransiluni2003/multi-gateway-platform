@@ -4,7 +4,7 @@ import SupabaseDownloadButton from './SupabaseDownloadButton';
 // Dummy file list for demonstration
 const files = [
   { key: 'example1.pdf', name: 'Example Document 1' },
-  { key: 'example2.jpg', name: 'Example Image 2' },
+  { key: 'WhatsApp Image 2025-11-19 at 16.59.56_7ffacb1c.jpg', name: 'Example Image 2' },
   { key: 'expired-file.txt', name: 'Expired File (simulate error)' },
 ];
 
