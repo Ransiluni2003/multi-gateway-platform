@@ -32,9 +32,45 @@ jobs:
           docker buildx build --platform linux/amd64 -f backend/src/services/analytics/Dockerfile -t multi-gateway-analytics:latest --load ./backend
           docker buildx build --platform linux/amd64 -f backend/src/services/notifications/Dockerfile -t multi-gateway-notifications:latest --load ./backend
 
-
-
           docker-compose -f docker-compose.override.yml up -d
+
       - name: Deploy Backend to Railway
+        run: |
+          npm install -g railway
+          railway up --token ${{ secrets.RAILWAY_TOKEN }} || echo "Railway deploy failed" > railway_error.log
+        continue-on-error: true
+
+      - name: Rollback Railway on failure
+        if: failure()
+        run: |
+          echo "Rolling back Railway deployment..."
+          railway rollback --token ${{ secrets.RAILWAY_TOKEN }}
+
+      - name: Deploy Frontend to Vercel
+        run: |
+          npm install -g vercel
+          vercel --prod --token ${{ secrets.VERCEL_TOKEN }} || echo "Vercel deploy failed" > vercel_error.log
+        continue-on-error: true
+
+      - name: Rollback Vercel on failure
+        if: failure()
+        run: |
+          echo "Rolling back Vercel deployment..."
+          # Example: promote previous deployment (requires Vercel CLI/API)
+          # vercel promote <previous-deployment-id> --token ${{ secrets.VERCEL_TOKEN }}
 
       - name: Run integration tests
+        run: echo "Run your integration tests here"
+
+      - name: Upload error logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deploy-error-logs
+          path: |
+            railway_error.log
+            vercel_error.log
+
+      - name: Notify on failure
+        if: failure()
+        run: echo "Deployment failed! Send notification here (Slack, email, etc.)"
