@@ -38,17 +38,28 @@ export default function Dashboard() {
 
   useEffect(() => {
     let mounted = true;
-    setLoading(true);
-    try {
-      // Simulate data load, replace with actual fetch if needed
-      setTimeout(() => {
-        setData(demoData);
-        setLoading(false);
-      }, 500);
-    } catch (err: any) {
-      setError(err?.message || 'Unknown error');
-      setLoading(false);
+    async function loadRealData() {
+      setLoading(true);
+      try {
+        const res = await fetch('/api/fraud/trend');
+        if (!res.ok) throw new Error('Failed to fetch fraud trend');
+        const json = await res.json();
+        if (mounted) {
+          setData(json);
+          setError(null);
+        }
+      } catch (err: any) {
+        console.error('Error loading fraud trend:', err);
+        if (mounted) {
+          setError(err?.message || 'Unknown error');
+          // Fallback to demo data on error
+          setData(demoData);
+        }
+      } finally {
+        if (mounted) setLoading(false);
+      }
     }
+    loadRealData();
     return () => {
       mounted = false;
     };

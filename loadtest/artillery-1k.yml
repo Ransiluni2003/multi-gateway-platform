@@ -1,0 +1,55 @@
+config:
+  target: "http://localhost:5002"  # API gateway port
+  phases:
+    - duration: 30
+      arrivalRate: 10
+      name: "Warm-up Phase"
+    - duration: 60
+      arrivalRate: 100
+      name: "Ramp-up to 100 VU/s"
+    - duration: 120
+      arrivalRate: 1000
+      name: "1000 Virtual Users per second"
+    - duration: 30
+      arrivalRate: 50
+      name: "Cool-down"
+  http:
+    timeout: 30
+  processor: "./processor.js"
+  plugins:
+    metrics-by-endpoint:
+      stripQueryString: true
+
+scenarios:
+  - name: "Health Check"
+    weight: 10
+    flow:
+      - get:
+          url: "/health"
+
+  - name: "Payment Processing"
+    weight: 40
+    flow:
+      - post:
+          url: "/api/payments/pay"
+          json:
+            amount: "{{ $randomNumber(10, 1000) }}"
+            currency: "USD"
+            paymentMethod: "credit_card"
+            source: "loadtest-{{ $randomString() }}"
+
+  - name: "Analytics Query"
+    weight: 30
+    flow:
+      - get:
+          url: "/api/analytics/stats"
+          
+  - name: "Notifications"
+    weight: 20
+    flow:
+      - post:
+          url: "/api/notifications/send"
+          json:
+            type: "email"
+            recipient: "loadtest@example.com"
+            message: "Load test notification"

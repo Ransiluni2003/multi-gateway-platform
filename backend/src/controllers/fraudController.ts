@@ -5,37 +5,55 @@ export async function getFraudAndRefundTrend(req: Request, res: Response) {
   try {
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 3600 * 1000);
 
-    const result = await EventLog.aggregate([
-      {
-        $match: {
-          event: { $in: ['fraud_detected', 'refund_processed'] },
-          createdAt: { $gte: thirtyDaysAgo },
-        },
-      },
-      {
-        $group: {
-          _id: { day: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } }, type: "$event" },
-          count: { $sum: 1 },
-        },
-      },
-      {
-        $group: {
-          _id: "$_id.day",
-          counts: { $push: { type: "$_id.type", count: "$count" } },
-        },
-      },
-      { $sort: { _id: 1 } },
-    ]);
+    // First, get all matching documents
+    const allDocs = await EventLog.find({
+      event: { $in: ['fraud_detected', 'refund_processed'] }
+    }).lean();
 
-    const data = result.map((day: any) => {
-      const fraud = day.counts.find((c: any) => c.type === 'fraud_detected')?.count || 0;
-      const refund = day.counts.find((c: any) => c.type === 'refund_processed')?.count || 0;
-      return { date: day._id, fraud, refund };
+    console.log('Total docs found:', allDocs.length);
+    console.log('Sample doc:', allDocs[0]);
+
+    // Process and group them
+    const dayMap: { [key: string]: { fraud: number; refund: number } } = {};
+
+    allDocs.forEach((doc: any) => {
+      let createdDate: Date;
+      
+      // Handle both string and Date formats
+      if (typeof doc.createdAt === 'string') {
+        createdDate = new Date(doc.createdAt);
+      } else if (doc.createdAt instanceof Date) {
+        createdDate = doc.createdAt;
+      } else {
+        return; // Skip invalid dates
+      }
+
+      if (createdDate < thirtyDaysAgo) return;
+
+      const dateStr = createdDate.toISOString().split('T')[0]; // YYYY-MM-DD
+      if (!dayMap[dateStr]) {
+        dayMap[dateStr] = { fraud: 0, refund: 0 };
+      }
+
+      if (doc.event === 'fraud_detected') {
+        dayMap[dateStr].fraud += 1;
+      } else if (doc.event === 'refund_processed') {
+        dayMap[dateStr].refund += 1;
+      }
     });
 
+    const data = Object.entries(dayMap)
+      .map(([date, counts]) => ({
+        date,
+        fraud: counts.fraud,
+        refund: counts.refund
+      }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    console.log('Final data:', data);
     res.json(data);
   } catch (error) {
-    console.error(error);
+    console.error('Fraud trend error:', error);
     res.status(500).json({ message: 'Error fetching fraud/refund data' });
   }
 }

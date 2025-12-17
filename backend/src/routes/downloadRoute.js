@@ -20,7 +20,7 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SER
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-});
+
 
 module.exports = router;
 router.get('/:path', async (req, res) => {

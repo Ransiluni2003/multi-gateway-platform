@@ -4,7 +4,7 @@ WORKDIR /app
 # Install full deps and build
 COPY package*.json ./
 RUN npm config set registry https://registry.npmjs.org/
-RUN npm ci
+RUN npm install
 COPY . .
 RUN npm run build
 
@@ -14,16 +14,13 @@ WORKDIR /app
 # Install production deps only
 COPY package*.json ./
 RUN npm config set registry https://registry.npmjs.org/
-RUN npm ci --production
+RUN npm install --production
 
 # Copy built output from builder
 COPY --from=builder /app/dist ./dist
 
-# Also copy any fallback worker file if present
-COPY --from=builder /app/worker/worker.js ./worker/worker.js
-
-# Ensure a predictable entry file exists at dist/worker.js
-RUN if [ -f ./dist/services/workers/worker.js ]; then cp ./dist/services/workers/worker.js ./dist/worker.js; fi || true
+# Copy worker entry point
+COPY --from=builder /app/worker.js ./worker.js
 
 ENV NODE_ENV=production
 
@@ -31,5 +28,5 @@ ENV NODE_ENV=production
 ENV WORKER_METRICS_PORT=9100
 EXPOSE 9100
 
-# Start the worker from the compiled dist
-CMD ["node", "dist/worker.js"]
+# Start the worker from the entry point
+CMD ["node", "worker.js"]

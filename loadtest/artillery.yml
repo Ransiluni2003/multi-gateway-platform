@@ -1,5 +1,5 @@
 config:
-  target: "http://host.docker.internal:3000"
+  target: "http://localhost:3000"
   phases:
     - duration: 60
       arrivalRate: 100
@@ -9,9 +9,26 @@ config:
       name: "Sustained 1000 rps"
   defaults:
     headers:
-      Content-Type: application/json
+      Content-Type: application/json      scrape_configs:
+        - job_name: 'prometheus'
+          static_configs:
+            - targets: ['localhost:9090']
+        - job_name: 'otel-collector'
+          static_configs:
+            - targets: ['otel-collector:8888']
   processor: "./processor.js"
 
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+  - job_name: 'otel-collector'
+    static_configs:
+      - targets: ['otel-collector:8888']
+      
 scenarios:
   - name: "Mixed API traffic"
     flow:

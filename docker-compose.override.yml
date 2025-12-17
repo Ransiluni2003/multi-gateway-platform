@@ -32,7 +32,7 @@ services:
       dockerfile: ./src/services/api/Dockerfile
     container_name: api
     ports:
-      - "3000:3000"
+      - "5002:3000"
     environment:
       - NODE_ENV=development
       - REDIS_URL=redis://redis:6379
@@ -51,7 +51,7 @@ services:
       dockerfile: ./src/services/payments/Dockerfile
     container_name: payments
     ports:
-      - "3001:3000"
+      - "5003:3000"
     environment:
       - PAYMENT_GATEWAY_URL=http://mock-payment-gateway:5000
       - REDIS_URL=redis://redis:6379

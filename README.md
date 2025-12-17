@@ -16,6 +16,7 @@ docker-compose -f docker-compose.yml -f docker-compose.override.yml up --build
   - Payments: `http://localhost:4001/health`
   - Analytics: `http://localhost:4002/health`
   - Notifications: `http://localhost:4003/health`
+  - API gateway (Compose override): `http://localhost:5002`
 
 Containerization Overview
 
@@ -27,13 +28,20 @@ OpenTelemetry & Metrics
 
 Load Testing (Artillery)
 
-Run the provided Artillery scenario at `loadtest/artillery.yml` to simulate load and generate a report:
+Run the provided Artillery scenarios to simulate load and generate reports:
 
 ```powershell
 npm install -g artillery
-artillery run loadtest/artillery.yml --output loadtest/results.json
-artillery report --output loadtest/report.html loadtest/results.json
+# 1k-VU scenario
+cd loadtest
+npx artillery run artillery-1k.yml -o report-1k.json
+# Generate HTML report (optional)
+artillery report --output report-1k.html report-1k.json
 ```
+
+Results and docs:
+- JSON report: [loadtest/report-1k.json](loadtest/report-1k.json)
+- Summary: [loadtest/results-1k.md](loadtest/results-1k.md)
 
 CI/CD (GitHub Actions)
 
@@ -42,6 +50,7 @@ CI/CD (GitHub Actions)
 Loom Recording Scripts
 
 - The README contains suggested terminal commands and narration checklists for three Loom recordings: Compose demo, CI/CD pipeline run, and load test walkthrough.
+- Suggested 3–5 minute Loom script: see [docs/LOOM_SCRIPT.md](docs/LOOM_SCRIPT.md)
 
 Acceptance Checklist
 
@@ -49,6 +58,18 @@ Acceptance Checklist
 - CI/CD: workflow builds and deploys artifacts.
 - Load testing: scenario completes and produces a report.
 - Observability: OTEL + Prometheus are configured and scrape metrics.
+
+Failure Drill (Docker Compose)
+
+Follow [docs/docker-compose-failure-drill.md](docs/docker-compose-failure-drill.md) to reproduce:
+- Stop a dependency (Mongo), verify service isolation
+- Start it again and capture recovery logs
+- Take screenshots as listed in the doc
+
+Workers & Redis Tuning
+- 5 worker replicas built and running; metrics on `:9100/metrics`
+- Redis tuned via [redis.conf](redis.conf) and mounted in Compose
+- Note: For BullMQ reliability under eviction, consider `maxmemory-policy noeviction`
  
 **Fraud Trendline & Refund Ratio (Status)**
 
