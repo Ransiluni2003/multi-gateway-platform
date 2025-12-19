@@ -1,3 +1,5 @@
+      - name: List files in root
+        run: ls -al
 name: CI/CD
 
 on:
