@@ -12,6 +12,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Create .env file from GitHub Secrets
+        run: |
+          echo "MONGO_URL=${{ secrets.MONGO_URL }}" >> .env
+          echo "RAILWAY_API_KEY=${{ secrets.RAILWAY_API_KEY }}" >> .env
+          echo "REDIS_URL=${{ secrets.REDIS_URL }}" >> .env
+          echo "SUPABASE_KEY=${{ secrets.SUPABASE_KEY }}" >> .env
+          echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" >> .env
+          echo "VERCEL_ORG_ID=${{ secrets.VERCEL_ORG_ID }}" >> .env
+          echo "VERCEL_PROJECT_ID=${{ secrets.VERCEL_PROJECT_ID }}" >> .env
+          echo "VERCEL_TOKEN=${{ secrets.VERCEL_TOKEN }}" >> .env
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
 
@@ -19,7 +30,7 @@ jobs:
         uses: docker/setup-buildx-action@v2
 
       - name: Login to DockerHub
-        if: secrets.DOCKER_USERNAME && secrets.DOCKER_PASSWORD
+        if: ${{ secrets.DOCKER_USERNAME && secrets.DOCKER_PASSWORD }}
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
