@@ -22,6 +22,9 @@ jobs:
           echo "VERCEL_ORG_ID=${{ secrets.VERCEL_ORG_ID }}" >> .env
           echo "VERCEL_PROJECT_ID=${{ secrets.VERCEL_PROJECT_ID }}" >> .env
           echo "VERCEL_TOKEN=${{ secrets.VERCEL_TOKEN }}" >> .env
+          echo "MONGO_USER=${{ secrets.MONGO_USER }}" >> .env
+          echo "MONGO_PASS=${{ secrets.MONGO_PASS }}" >> .env
+          echo "REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}" >> .env
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
