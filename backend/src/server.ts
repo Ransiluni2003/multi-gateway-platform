@@ -57,12 +57,23 @@ connectMongo();
 // ==========================
 // Logger Setup
 // ==========================
-const logtail = new Logtail(process.env.LOGTAIL_SOURCE_TOKEN || "");
-const logger = winston.createLogger({
-  level: "info",
-  format: winston.format.json(),
-  transports: [new winston.transports.Console(), new LogtailTransport(logtail)],
-});
+let logger: winston.Logger;
+const logtailToken = process.env.LOGTAIL_SOURCE_TOKEN;
+if (logtailToken) {
+  const logtail = new Logtail(logtailToken);
+  logger = winston.createLogger({
+    level: "info",
+    format: winston.format.json(),
+    transports: [new winston.transports.Console(), new LogtailTransport(logtail)],
+  });
+} else {
+  logger = winston.createLogger({
+    level: "info",
+    format: winston.format.json(),
+    transports: [new winston.transports.Console()],
+  });
+  console.warn("[WARN] Logtail logging is disabled: LOGTAIL_SOURCE_TOKEN is missing or empty.");
+}
 
 // ==========================
 // Express App Setup

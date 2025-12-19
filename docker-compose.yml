@@ -17,8 +17,6 @@ services:
       - ./.env
     depends_on:
       - payments
-      - analytics
-      - notifications
       - redis
       - mongo
     networks:
@@ -50,19 +48,19 @@ services:
     networks:
       - backend-network
 
-  notifications:
-    build:
-      context: ./backend
-      dockerfile: ./src/services/notifications/Dockerfile
-    container_name: notifications
-    ports:
-      - "4003:4003"
-    env_file:
-      - ./.env
-    depends_on:
-      - redis
-    networks:
-      - backend-network
+  # notifications:
+  #   build:
+  #     context: ./backend
+  #     dockerfile: ./src/services/notifications/Dockerfile
+  #   container_name: notifications
+  #   ports:
+  #     - "4003:4003"
+  #   env_file:
+  #     - ./.env
+  #   depends_on:
+  #     - redis
+  #   networks:
+  #     - backend-network
 
   worker:
     build:
@@ -92,19 +90,19 @@ services:
     networks:
       - backend-network
 
-  analytics:
-    build:
-      context: ./backend
-      dockerfile: ./src/services/analytics/Dockerfile
-    container_name: analytics
-    ports:
-      - "4002:4002"
-    env_file:
-      - ./.env
-    depends_on:
-      - mongo
-    networks:
-      - backend-network
+  # analytics:
+  #   build:
+  #     context: ./backend
+  #     dockerfile: ./src/services/analytics/Dockerfile
+  #   container_name: analytics
+  #   ports:
+  #     - "4002:4002"
+  #   env_file:
+  #     - ./.env
+  #   depends_on:
+  #     - mongo
+  #   networks:
+  #     - backend-network
 
   mongo:
     image: mongo:6

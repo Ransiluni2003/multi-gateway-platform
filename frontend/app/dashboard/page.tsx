@@ -1,8 +1,32 @@
 "use client";
 import React, { useEffect, useState } from 'react';
+
 import FraudTrend from '../../components/FraudTrend';
 
+
 export default function Dashboard() {
+    // Dashboard metrics state (MOVED INSIDE COMPONENT)
+    const [metrics, setMetrics] = useState<{ totalTransactions: number; fraudEvents: number; fraudChangePct: number; refundRatio: number } | null>(null);
+    const [metricsLoading, setMetricsLoading] = useState(true);
+    useEffect(() => {
+      let mounted = true;
+      async function loadMetrics() {
+        setMetricsLoading(true);
+        try {
+          const res = await fetch('/api/dashboard');
+          if (!res.ok) throw new Error('Failed to fetch dashboard metrics');
+          const json = await res.json();
+          if (mounted) setMetrics(json);
+        } catch (err) {
+          if (mounted) setMetrics(null);
+        } finally {
+          if (mounted) setMetricsLoading(false);
+        }
+      }
+      loadMetrics();
+      return () => { mounted = false; };
+    }, []);
+
     const [timeRange, setTimeRange] = useState<'7d' | '30d' | 'all'>('all');
     type FraudData = { date: string; fraudCount: number; refundRatio: number };
     const [data, setData] = useState<FraudData[]>([]);
@@ -97,19 +121,27 @@ export default function Dashboard() {
         <section className="cards">
           <div className="card">
             <h3>Total Transactions</h3>
-            <div className="metric">12,345</div>
+            <div className="metric">
+              {metricsLoading ? '…' : metrics ? metrics.totalTransactions.toLocaleString() : '--'}
+            </div>
             <div className="meta">Last 24 hours</div>
           </div>
 
           <div className="card">
             <h3>Fraud Events</h3>
-            <div className="metric">21</div>
-            <div className="meta">↑ 8% from yesterday</div>
+            <div className="metric">
+              {metricsLoading ? '…' : metrics ? metrics.fraudEvents : '--'}
+            </div>
+            <div className="meta">
+              {metricsLoading ? '' : metrics ? `↑ ${Math.abs(metrics.fraudChangePct).toFixed(1)}% from yesterday` : ''}
+            </div>
           </div>
 
           <div className="card">
             <h3>Avg. Refund Ratio</h3>
-            <div className="metric">9.2%</div>
+            <div className="metric">
+              {metricsLoading ? '…' : metrics ? `${(metrics.refundRatio * 100).toFixed(1)}%` : '--'}
+            </div>
             <div className="meta">Past week</div>
           </div>
         </section>

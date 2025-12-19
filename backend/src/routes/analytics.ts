@@ -1,5 +1,6 @@
+
 import express from "express";
-import { getDashboardStats, getChartData } from "../controllers/analyticsController";
+import { getDashboardStats, getChartData, getDashboardMetrics } from "../controllers/analyticsController";
 
 const router = express.Router();
 
@@ -8,5 +9,8 @@ router.get("/totals", getDashboardStats);
 
 // Fetch data for charts (like daily/weekly reports)
 router.get("/charts", getChartData);
+
+// Dashboard metrics for cards
+router.get("/dashboard-metrics", getDashboardMetrics);
 
 export default router;
