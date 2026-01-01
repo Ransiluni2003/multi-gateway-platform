@@ -29,12 +29,12 @@ export default function DownloadTestPage() {
       expires: 120,
       description: "Should show 'File not found' error gracefully",
     },
-    {
-      title: "🔄 Auto-Retry Test",
-      fileKey: "undefined.jpeg",
-      expires: 120,
-      description: "Should retry on transient failures",
-    },
+    // {
+    //   title: "🔄 Auto-Retry Test",
+    //   fileKey: "undefined.jpeg",
+    //   expires: 120,
+    //   description: "Should retry on transient failures",
+    // },
   ];
 
   return (

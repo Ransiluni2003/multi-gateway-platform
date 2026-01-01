@@ -1,5 +1,5 @@
 config:
-  target: "http://localhost:5002"  # API gateway port
+  target: "http://localhost:5000"  # Backend port
   phases:
     - duration: 30
       arrivalRate: 10

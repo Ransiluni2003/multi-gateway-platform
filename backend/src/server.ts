@@ -1,10 +1,9 @@
-// server.ts
 import express, { Request, Response, NextFunction } from "express";
 import dotenv from "dotenv";
+import rateLimit from "express-rate-limit";
 import path from "path";
 import cors from "cors";
 import helmet from "helmet";
-import rateLimit from "express-rate-limit";
 import { v4 as uuidv4 } from "uuid";
 import axios from "axios";
 import * as Sentry from "@sentry/node";
@@ -15,6 +14,7 @@ import client from "prom-client";
 import { createClient } from "@supabase/supabase-js";
 import tracesRoutes from './routes/tracesRoutes';
 import fraudRoutes from "./routes/fraudRoutes";
+import analyticsRouter from "./routes/analytics";
 import { traceCapture } from "./middleware/traceCapture";
 
 // Load .env (ONLY from backend/.env)
@@ -29,7 +29,6 @@ import errorHandler from "./middleware/errorHandler";
 import securityRoutes from "./routes/securityRoutes";
 import jobsRoutes from "./routes/jobsRoutes";
 import filesRoutes from "./routes/filesRoutes";
-import analyticsRoutes from "./routes/analyticsRoutes";
 import { initRedis, redisClient } from "./config/redisClient";
 import { getPaymentDetails } from "./services/paymentsService";
 import axiosInstance from "./utils/axiosRetryClient";
@@ -79,6 +78,7 @@ if (logtailToken) {
 // Express App Setup
 // ==========================
 const app = express();
+// Health endpoint for load testing (must be after app is declared)
 app.use(express.json());
 // Capture lightweight traces for the admin trace viewer
 app.use(traceCapture);
@@ -123,7 +123,9 @@ app.use("/api/auth", authRoutes);
 app.use("/api/security", securityRoutes);
 app.use("/api/jobs", jobsRoutes);
 app.use("/api/files", filesRoutes);
-app.use("/api/analytics", analyticsRoutes);
+app.use("/api/traces", tracesRoutes);
+app.use("/api/fraud", fraudRoutes);
+app.use("/api/analytics", analyticsRouter);
 
 // ==========================
 // Health Checks
@@ -146,6 +148,21 @@ app.get("/api/health/services", async (req: Request, res: Response) => {
 
 app.get("/api/health", (req: Request, res: Response) =>
   res.json({ status: "OK", uptime: process.uptime() })
+);
+
+// Root endpoint
+app.get("/", (req: Request, res: Response) =>
+  res.json({ 
+    service: "Multi-Gateway Platform API", 
+    status: "running",
+    version: "1.0.0",
+    endpoints: {
+      health: "/api/health",
+      traces: "/api/traces/recent",
+      files: "/api/files",
+      auth: "/api/auth"
+    }
+  })
 );
 
 // Metrics endpoint

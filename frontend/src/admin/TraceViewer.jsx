@@ -1,10 +1,14 @@
 // frontend/src/admin/TraceViewer.jsx
 import React, { useEffect, useState } from 'react';
+import TraceWaterfall from './TraceWaterfall';
 
 export default function TraceViewer() {
   const [service, setService] = useState('');
   const [traces, setTraces] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [selectedTrace, setSelectedTrace] = useState(null);
+  const [spans, setSpans] = useState([]);
+  const [spansLoading, setSpansLoading] = useState(false);
 
   const fetchTraces = async () => {
     setLoading(true);
@@ -20,9 +24,33 @@ export default function TraceViewer() {
     }
   };
 
+  const fetchSpans = async (traceId) => {
+    setSpansLoading(true);
+    setSpans([]);
+    try {
+      // Try to fetch spans for the selected trace
+      const res = await fetch(`/api/traces/${traceId}/spans`);
+      if (res.ok) {
+        const data = await res.json();
+        setSpans(data.spans || []);
+      } else {
+        setSpans([]);
+      }
+    } catch (err) {
+      setSpans([]);
+    } finally {
+      setSpansLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchTraces();
   }, []);
+
+  const handleTraceClick = (trace) => {
+    setSelectedTrace(trace);
+    fetchSpans(trace.traceID);
+  };
 
   return (
     <div>
@@ -54,7 +82,7 @@ export default function TraceViewer() {
           </thead>
           <tbody>
             {traces.map((t) => (
-              <tr key={t.traceID}>
+              <tr key={t.traceID} className={selectedTrace && selectedTrace.traceID === t.traceID ? 'bg-blue-100' : ''} style={{ cursor: 'pointer' }} onClick={() => handleTraceClick(t)}>
                 <td className="border p-1">{t.traceID}</td>
                 <td className="border p-1">{t.serviceName}</td>
                 <td className="border p-1">{t.duration}</td>
@@ -64,6 +92,19 @@ export default function TraceViewer() {
           </tbody>
         </table>
       )}
+
+      <div className="mt-6">
+        <h3 className="font-bold mb-2">Trace Detail</h3>
+        {selectedTrace ? (
+          spansLoading ? (
+            <div>Loading spans…</div>
+          ) : (
+            <TraceWaterfall spans={spans} />
+          )
+        ) : (
+          <div>Select a trace to inspect spans.</div>
+        )}
+      </div>
     </div>
   );
 }

@@ -76,7 +76,7 @@ export default function FilesList() {
             <div style={{ fontSize: 12, color: '#9ca3af', marginBottom: 8 }}>
               {file.size > 0 && `${(file.size / 1024).toFixed(1)} KB`}
             </div>
-            <SupabaseDownloadButton fileKey={file.key} expires={120}>
+            <SupabaseDownloadButton fileKey={file.key} expires={10}>
               Download
             </SupabaseDownloadButton>
           </li>

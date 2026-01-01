@@ -48,7 +48,7 @@ jobs:
           docker buildx build --platform linux/amd64 -f backend/src/services/analytics/Dockerfile -t multi-gateway-analytics:latest --load ./backend
           docker buildx build --platform linux/amd64 -f backend/src/services/notifications/Dockerfile -t multi-gateway-notifications:latest --load ./backend
 
-          docker-compose -f docker-compose.override.yml up -d
+          docker compose -f docker-compose.yml -f docker-compose.override.yml up -d --build
 
       - name: Deploy Backend to Railway
         run: |

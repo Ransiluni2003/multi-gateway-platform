@@ -1,25 +1,13 @@
-import {Request,Response ,NextFunction} from "express";
+import { Request, Response, NextFunction } from "express";
+import TraceModel from "../models/Trace";
 
-type Trace ={
-    id: string;
-    path: string;
-    method: string;
-    status?: number;
-    durationMs?: number;
-    ts: string;
-    serviceName?: string;
-};
-
-const traces : Trace[] = [];
-
-export function traceCapture(req:Request,res:Response, next: NextFunction) {
+export function traceCapture(req: Request, res: Response, next: NextFunction) {
     const start = Date.now();
-    const id = (req.headers["x-tarce-id"]as string) || (req.headers['x-trace-id'] as string) || Math.random().toString(36).slice(2);
-    res.on("finish", () => {
+    const id = (req.headers["x-tarce-id"] as string) || (req.headers['x-trace-id'] as string) || Math.random().toString(36).slice(2);
+    res.on("finish", async () => {
         const durationMs = Date.now() - start;
         const serviceName = (req.headers['x-service-name'] as string) || process.env.SERVICE_NAME || 'api';
-
-        traces.unshift({
+        const traceDoc = {
             id,
             path: req.originalUrl,
             method: req.method,
@@ -27,13 +15,13 @@ export function traceCapture(req:Request,res:Response, next: NextFunction) {
             durationMs,
             ts: new Date().toISOString(),
             serviceName,
+        }; 
+        try {
+            await TraceModel.create(traceDoc);
+        } catch (err) {
+            // Optionally log error, but don't block response
+            // console.error('Failed to save trace:', err);
+        }
     });
-    if(traces.length > 200) traces.pop();
-});
-next();
-}
- 
-export function getRecentTraces(limit = 10) {
-    return traces.slice(0, limit);
-
+    next();
 }

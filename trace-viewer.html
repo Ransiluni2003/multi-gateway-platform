@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trace Entry & Viewer</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #181c2a; color: #fff; }
+    h1 { color: #ff00cc; }
+    form, table { background: #23263a; padding: 1em; border-radius: 8px; margin-bottom: 2em; }
+    label { display: block; margin-top: 1em; }
+    input, select { width: 100%; padding: 0.5em; margin-top: 0.2em; border-radius: 4px; border: none; }
+    button { margin-top: 1em; padding: 0.7em 1.5em; background: #ff00cc; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 0.5em; border-bottom: 1px solid #333; }
+    th { background: #2d314d; }
+    tr:hover { background: #22264a; }
+  </style>
+</head>
+<body>
+  <h1>Trace Entry & Viewer</h1>
+  <form id="traceForm">
+    <label>Trace ID <input name="traceId" required></label>
+    <label>Service <input name="service" required></label>
+    <label>Request ID <input name="requestId" required></label>
+    <label>Path <input name="path" required></label>
+    <label>Method
+      <select name="method">
+        <option>GET</option>
+        <option>POST</option>
+        <option>PUT</option>
+        <option>DELETE</option>
+      </select>
+    </label>
+    <label>Status <input name="status" type="number" required></label>
+    <label>Duration (ms) <input name="duration" type="number" required></label>
+    <label>Start Time (timestamp ms) <input name="startTime" type="number" required></label>
+    <label>Spans (JSON array) <input name="spans" value='[]' required></label>
+    <button type="submit">Add Trace</button>
+  </form>
+
+  <h2>Recent Traces</h2>
+  <table id="tracesTable">
+    <thead>
+      <tr>
+        <th>Trace ID</th><th>Service</th><th>Request ID</th><th>Path</th><th>Method</th><th>Status</th><th>Duration</th><th>Start Time</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    const api = 'http://localhost:4000/api/traces';
+    const form = document.getElementById('traceForm');
+    const tableBody = document.querySelector('#tracesTable tbody');
+
+    async function loadTraces() {
+      const res = await fetch(api);
+      const traces = await res.json();
+      tableBody.innerHTML = traces.map(t => `
+        <tr>
+          <td>${t.traceId}</td><td>${t.service}</td><td>${t.requestId}</td><td>${t.path}</td><td>${t.method}</td><td>${t.status}</td><td>${t.duration}</td><td>${new Date(t.startTime).toLocaleString()}</td>
+        </tr>
+      `).join('');
+    }
+
+    form.onsubmit = async e => {
+      e.preventDefault();
+      const data = Object.fromEntries(new FormData(form));
+      data.status = Number(data.status);
+      data.duration = Number(data.duration);
+      data.startTime = Number(data.startTime);
+      try { data.spans = JSON.parse(data.spans); } catch { data.spans = []; }
+      await fetch(api, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      form.reset();
+      loadTraces();
+    };
+
+    loadTraces();
+  </script>
+</body>
+</html>

@@ -7,12 +7,12 @@ const supabase = createClient(
 
 export default supabase;
 
-// Helper to generate signed URL
-export async function getSignedUrl(filePath) {
+// Helper to generate signed URL with custom expiry
+export async function getSignedUrl(filePath, expirySec = 3600) {
   const { data, error } = await supabase
     .storage
     .from('platform-assets')
-    .createSignedUrl(filePath, 60 * 60); // URL valid for 1 hour
+    .createSignedUrl(filePath, expirySec); // expirySec seconds
   if (error) throw error;
   return data.signedUrl;
 }

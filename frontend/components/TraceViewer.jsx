@@ -163,7 +163,22 @@ const TraceViewer = () => {
   );
 
   return (
+
     <div style={styles.shell}>
+      <div style={{ marginBottom: 8 }}>
+        <span style={{
+          color: 'limegreen',
+          fontWeight: 600,
+          fontSize: 15,
+          background: 'rgba(50,205,50,0.08)',
+          borderRadius: 6,
+          padding: '4px 12px',
+          display: 'inline-block',
+          marginBottom: 4
+        }}>
+          ✅ Showing live data from MongoDB (not mock data)
+        </span>
+      </div>
       <div style={styles.headerRow}>
         <div>
           <h2 style={styles.title}>Service Trace Viewer</h2>
@@ -274,7 +289,7 @@ const TraceViewer = () => {
                           </span>
                         </td>
                         <td style={styles.cellBase}>{t.duration ? `${t.duration} us` : "-"}</td>
-                        <td style={styles.cellBase}>{new Date(t.ts).toLocaleString()}</td>
+                        <td style={styles.cellBase} suppressHydrationWarning>{new Date(t.ts).toLocaleString()}</td>
                       </tr>
                     );
                   })}
@@ -315,7 +330,7 @@ const TraceViewer = () => {
                 </div>
                 <div style={styles.summaryItem}>
                   <div style={styles.summaryLabel}>Started</div>
-                  <div style={styles.summaryValue}>{new Date(selectedTrace.ts).toLocaleString()}</div>
+                  <div style={styles.summaryValue} suppressHydrationWarning>{new Date(selectedTrace.ts).toLocaleString()}</div>
                 </div>
                 <div style={styles.summaryItem}>
                   <div style={styles.summaryLabel}>Spans</div>

@@ -1,0 +1,142 @@
+[
+  {
+    "traceId": "json-trace-1",
+    "service": "payments",
+    "requestId": "req-1",
+    "path": "/api/payments",
+    "method": "POST",
+    "status": 201,
+    "duration": 120000,
+    "startTime": 1767200000000,
+    "spans": [
+      { "name": "db.query", "start": 0, "duration": 30000 },
+      { "name": "http.call", "start": 30000, "duration": 90000 }
+    ]
+  },
+  {
+    "traceId": "json-trace-2",
+    "service": "orders",
+    "requestId": "req-2",
+    "path": "/api/orders",
+    "method": "GET",
+    "status": 200,
+    "duration": 90000,
+    "startTime": 1767199000000,
+    "spans": [
+      { "name": "db.query", "start": 0, "duration": 20000 },
+      { "name": "http.call", "start": 20000, "duration": 70000 }
+    ]
+  },
+  {
+    "traceId": "json-trace-3",
+    "service": "api",
+    "requestId": "req-3",
+    "path": "/api/some/path",
+    "method": "PUT",
+    "status": 200,
+    "duration": 150000,
+    "startTime": 1767198000000,
+    "spans": [
+      { "name": "db.query", "start": 0, "duration": 50000 },
+      { "name": "http.call", "start": 50000, "duration": 100000 }
+    ]
+  },
+  {
+    "traceId": "json-trace-4",
+    "service": "auth",
+    "requestId": "req-4",
+    "path": "/api/auth",
+    "method": "POST",
+    "status": 401,
+    "duration": 80000,
+    "startTime": 1767197000000,
+    "spans": [
+      { "name": "db.query", "start": 0, "duration": 20000 },
+      { "name": "http.call", "start": 20000, "duration": 60000 }
+    ]
+  },
+  {
+    "traceId": "json-trace-5",
+    "service": "payments",
+    "requestId": "req-5",
+    "path": "/api/payments",
+    "method": "GET",
+    "status": 200,
+    "duration": 110000,
+    "startTime": 1767196000000,
+    "spans": [
+      { "name": "db.query", "start": 0, "duration": 40000 },
+      { "name": "http.call", "start": 40000, "duration": 70000 }
+    ]
+  },
+  {
+    "traceId": "json-trace-6",
+    "service": "orders",
+    "requestId": "req-6",
+    "path": "/api/orders",
+    "method": "POST",
+    "status": 201,
+    "duration": 130000,
+    "startTime": 1767195000000,
+    "spans": [
+      { "name": "db.query", "start": 0, "duration": 30000 },
+      { "name": "http.call", "start": 30000, "duration": 100000 }
+    ]
+  },
+  {
+    "traceId": "json-trace-7",
+    "service": "api",
+    "requestId": "req-7",
+    "path": "/api/some/path",
+    "method": "GET",
+    "status": 404,
+    "duration": 70000,
+    "startTime": 1767194000000,
+    "spans": [
+      { "name": "db.query", "start": 0, "duration": 20000 },
+      { "name": "http.call", "start": 20000, "duration": 50000 }
+    ]
+  },
+  {
+    "traceId": "json-trace-8",
+    "service": "auth",
+    "requestId": "req-8",
+    "path": "/api/auth",
+    "method": "POST",
+    "status": 200,
+    "duration": 95000,
+    "startTime": 1767193000000,
+    "spans": [
+      { "name": "db.query", "start": 0, "duration": 25000 },
+      { "name": "http.call", "start": 25000, "duration": 70000 }
+    ]
+  },
+  {
+    "traceId": "json-trace-9",
+    "service": "payments",
+    "requestId": "req-9",
+    "path": "/api/payments",
+    "method": "PUT",
+    "status": 500,
+    "duration": 160000,
+    "startTime": 1767192000000,
+    "spans": [
+      { "name": "db.query", "start": 0, "duration": 60000 },
+      { "name": "http.call", "start": 60000, "duration": 100000 }
+    ]
+  },
+  {
+    "traceId": "json-trace-10",
+    "service": "orders",
+    "requestId": "req-10",
+    "path": "/api/orders",
+    "method": "GET",
+    "status": 200,
+    "duration": 105000,
+    "startTime": 1767191000000,
+    "spans": [
+      { "name": "db.query", "start": 0, "duration": 35000 },
+      { "name": "http.call", "start": 35000, "duration": 70000 }
+    ]
+  }
+]

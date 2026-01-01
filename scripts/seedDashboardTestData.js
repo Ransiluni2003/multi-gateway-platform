@@ -5,6 +5,7 @@ const mongoose = require('mongoose');
 const { EventLog } = require('../backend/src/models/EventLog');
 const TransactionLog = require('../backend/src/models/TransactionLog').default;
 
+
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/your-db-name';
 
 async function seed() {

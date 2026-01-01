@@ -1,8 +1,8 @@
 // backend/worker/worker.js
 
-import { Worker } from 'bullmq';
-import IORedis from 'ioredis';
-import dotenv from 'dotenv';
+const { Worker } = require('bullmq');
+const IORedis = require('ioredis');
+const dotenv = require('dotenv');
 
 dotenv.config();
 

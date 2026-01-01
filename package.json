@@ -25,8 +25,13 @@
     "@opentelemetry/resources": "^2.2.0",
     "@opentelemetry/sdk-node": "^0.208.0",
     "@opentelemetry/semantic-conventions": "^1.38.0",
+    "@supabase/supabase-js": "^2.89.0",
     "amqplib": "^0.10.9",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
     "ioredis": "^5.8.2",
+    "mongoose": "^9.1.1",
     "uuid": "^13.0.0"
   },
   "devDependencies": {

@@ -14,8 +14,10 @@ export default function SupabaseDownloadButton({ fileKey, expires = 120, childre
   };
 
   const fetchDownloadUrl = async () => {
-    console.log('[SUPABASE] Fetching signed URL for:', fileKey, 'with expiry:', expires, 'seconds');
-    const res = await fetch(`/api/files/download-url?key=${encodeURIComponent(fileKey)}&expires=${expires}`);
+    const MIN_EXPIRES_CLIENT = 60; // safer minimum to avoid borderline expiry
+    const requestedExpires = Math.max(Number(expires) || MIN_EXPIRES_CLIENT, MIN_EXPIRES_CLIENT);
+    console.log('[SUPABASE] Fetching signed URL for:', fileKey, 'with expiry:', requestedExpires, 'seconds');
+    const res = await fetch(`/api/files/download-url?key=${encodeURIComponent(fileKey)}&expires=${requestedExpires}`);
     let data;
     try {
       data = await res.json();
@@ -28,31 +30,35 @@ export default function SupabaseDownloadButton({ fileKey, expires = 120, childre
       // Map technical errors to user-friendly messages
       if (res.status === 401) {
         console.warn('[SUPABASE] Unauthorized (401) - URL likely expired');
-        return { error: 'Download link expired. Please try again.', code: 401 };
+        return { error: 'Download link expired. Please try again.', code: 401, type: 'EXPIRED_OR_UNAUTHORIZED' };
       }
       if (res.status === 403) {
         console.warn('[SUPABASE] Forbidden (403) - Access denied');
-        return { error: 'Download link expired. Please try again.', code: 403 };
+        return { error: 'Download link expired. Please try again.', code: 403, type: 'FORBIDDEN' };
       }
       if (res.status === 404) {
         console.error('[SUPABASE] Not Found (404) - File does not exist:', fileKey);
-        return { error: 'File not found.', code: 404 };
+        return { error: 'File not found.', code: 404, type: 'NOT_FOUND' };
       }
       if (res.status === 400) {
         // Replace technical validation errors with friendly message
         console.error('[SUPABASE] Bad Request (400):', data?.error);
+        if (data?.error?.includes('InvalidJWT') || data?.error?.toLowerCase().includes('signature mismatch')) {
+          console.warn('[SUPABASE] InvalidJWT or signature mismatch detected - treating as expired token');
+          return { error: 'Download link expired. Please try again.', code: 401, type: 'SIGNATURE_MISMATCH' };
+        }
         const friendly = data?.error?.toLowerCase()?.includes('not found')
           ? 'File not found.'
           : 'Request error. Please contact support.';
-        return { error: friendly, code: 400 };
+        return { error: friendly, code: 400, type: 'BAD_REQUEST' };
       }
       if (res.status >= 500) {
         console.error('[SUPABASE] Server Error:', res.status);
-        return { error: 'Server error. Please try again later.', code: res.status };
+        return { error: 'Server error. Please try again later.', code: res.status, type: 'SERVER_ERROR' };
       }
       // Generic fallback for other errors
       console.error('[SUPABASE] Unexpected error:', res.status);
-      return { error: 'Download failed. Please try again.', code: res.status };
+      return { error: 'Download failed. Please try again.', code: res.status, type: 'UNKNOWN_ERROR' };
     }
     
     if (!data.downloadUrl) {
@@ -123,81 +129,74 @@ export default function SupabaseDownloadButton({ fileKey, expires = 120, childre
 
     onDownloadStart?.();
 
+    const logDownloadError = async (details) => {
+      try {
+        const logPayload = {
+          ...details,
+          fileKey,
+          timestamp: new Date().toISOString(),
+          userAgent: navigator.userAgent,
+        };
+        await fetch('/api/log/download-error', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(logPayload),
+        });
+      } catch (e) {
+        // Silently ignore logging errors
+      }
+    };
+
+    // Debug: log current time and expiry
+    setTimeout(() => {
+      const cache = urlCacheRef.current;
+      if (cache.url && cache.expiresAt) {
+        console.log('[DEBUG] Cached URL expires at:', new Date(cache.expiresAt).toISOString(), 'Current time:', new Date().toISOString());
+      }
+    }, 1000);
+
     while (currentRetry <= maxRetries) {
       try {
-        // Check if cached URL is still valid
-        let downloadUrl = urlCacheRef.current.url;
-        let expiresAt = urlCacheRef.current.expiresAt;
-
-        if (!downloadUrl || isUrlExpired(expiresAt)) {
-          showToast('Fetching download link...', 'info');
-          
-          const result = await fetchDownloadUrl();
-          if (result.error) {
-            if (result.code === 404) {
-              showToast('File not found.', 'error');
-              setError(result.error);
-              onDownloadError?.(result.error);
-              setLoading(false);
-              return;
-            }
-            
-            if (currentRetry < maxRetries) {
-              showToast(`Attempt ${currentRetry + 1} failed. Retrying...`, 'warning');
-              currentRetry++;
-              await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1s before retry
-              continue;
-            } else {
-              showToast(result.error, 'error');
-              setError(result.error);
-              onDownloadError?.(result.error);
-              setLoading(false);
-              return;
-            }
+        // Always fetch a fresh signed URL to avoid stale/expired tokens
+        showToast('Fetching download link...', 'info');
+        const result = await fetchDownloadUrl();
+        if (result.error) {
+          if (result.code === 404) {
+            showToast('File not found.', 'error');
+            setError(result.error);
+            onDownloadError?.(result.error);
+            await logDownloadError({ fileKey, error: result.error, code: result.code, stage: 'fetchDownloadUrl' });
+            setLoading(false);
+            return;
           }
-
-          downloadUrl = result.url;
-          expiresAt = result.expiresAt;
-          urlCacheRef.current = { url: downloadUrl, expiresAt };
-        }
-
-        // Validate URL before using
-        const validation = await checkUrlValid(downloadUrl);
-        
-        if (validation.expired) {
-          showToast('Link expired. Refreshing...', 'warning');
-          urlCacheRef.current = { url: null, expiresAt: null }; // Clear cache
-          currentRetry++;
-          continue;
-        }
-
-        if (validation.notFound) {
-          showToast('File not found.', 'error');
-          setError('File not found.');
-          onDownloadError?.('File not found.');
-          setLoading(false);
-          return;
-        }
-
-        if (!validation.valid) {
           if (currentRetry < maxRetries) {
-            showToast('Link validation failed. Retrying...', 'warning');
-            urlCacheRef.current = { url: null, expiresAt: null };
+            showToast(`Attempt ${currentRetry + 1} failed. Retrying...`, 'warning');
             currentRetry++;
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1s before retry
             continue;
           } else {
-            showToast('Download link invalid.', 'error');
-            setError('Download link is invalid.');
-            onDownloadError?.('Invalid download link.');
+            showToast(result.error, 'error');
+            setError(result.error);
+            onDownloadError?.(result.error);
+            await logDownloadError({ fileKey, error: result.error, code: result.code, stage: 'fetchDownloadUrl' });
             setLoading(false);
             return;
           }
         }
 
-        // Success - open download
+        const downloadUrl = result.url;
+        const expiresAt = result.expiresAt;
+        urlCacheRef.current = { url: downloadUrl, expiresAt };
+
+        // Use server-side proxy route for actual download to avoid CORS
+        const MIN_EXPIRES_CLIENT = 60;
+        const requestedExpires = Math.max(Number(expires) || MIN_EXPIRES_CLIENT, MIN_EXPIRES_CLIENT);
+        const proxyUrl = `/api/files/download?key=${encodeURIComponent(fileKey)}&expires=${requestedExpires}`;
+        console.log('[SUPABASE] Opening proxy download URL:', proxyUrl);
+
+        // Success - open download in a new tab; server route handles retry/expiry
         showToast('Starting download...', 'success');
-        window.open(downloadUrl, '_blank');
+        window.open(proxyUrl, '_blank');
         onDownloadSuccess?.();
         setLoading(false);
         setRetryCount(currentRetry);
@@ -213,6 +212,7 @@ export default function SupabaseDownloadButton({ fileKey, expires = 120, childre
           showToast('Download failed after retries.', 'error');
           setError('Download failed. Please try again.');
           onDownloadError?.(err.message);
+          await logDownloadError({ fileKey, error: err.message, stage: 'finalCatch' });
           setLoading(false);
           return;
         }
@@ -222,6 +222,11 @@ export default function SupabaseDownloadButton({ fileKey, expires = 120, childre
 
   // Handles download with signed URL expiry detection and refresh logic
   const handleDownload = async () => {
+    if (!fileKey) {
+      showToast('No file selected for download.', 'error');
+      setError('No file selected for download.');
+      return;
+    }
     await downloadWithRetry(2);
   };
 
