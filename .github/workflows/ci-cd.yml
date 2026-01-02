@@ -1,8 +1,9 @@
-      - name: List files in root
+- name: List files in root
         run: ls -al
+        
 name: CI/CD
 
-on:
+   0n:
   push:
     branches: [ main ]
   pull_request:
