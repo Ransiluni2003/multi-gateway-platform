@@ -4,7 +4,8 @@ import TransactionLog from '../../models/TransactionLog';
 
 export default async function handler(req, res) {
   await dbConnect();
-  // Get last 14 days
+
+  
   const today = new Date();
   const start = new Date(today);
   start.setDate(today.getDate() - 13);
