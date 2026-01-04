@@ -2,6 +2,12 @@ import express, { Request, Response, NextFunction } from "express";
 import dotenv from "dotenv";
 import rateLimit from "express-rate-limit";
 import path from "path";
+
+// IMPORTANT: Load .env FIRST before any other imports that use it
+dotenv.config({
+  path: path.resolve(process.cwd(), ".env"),
+});
+
 import cors from "cors";
 import helmet from "helmet";
 import { v4 as uuidv4 } from "uuid";
@@ -16,11 +22,6 @@ import tracesRoutes from './routes/tracesRoutes';
 import fraudRoutes from "./routes/fraudRoutes";
 import analyticsRouter from "./routes/analytics";
 import { traceCapture } from "./middleware/traceCapture";
-
-// Load .env (ONLY from backend/.env)
-dotenv.config({
-  path: path.resolve(__dirname, "../.env"),
-});
 
 // Local Imports
 import connectMongo from "./config/db";
@@ -85,7 +86,7 @@ app.use(traceCapture);
 app.use(helmet());
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN || "http://localhost:3000",
+    origin: ["http://localhost:3000", "http://localhost:3001"],
     credentials: true,
   })
 );

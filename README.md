@@ -145,6 +145,43 @@ docker-compose down
   - "Simulate Transaction" button to generate test data
   - Interactive filtering and zoom
 
+#### 📊 Understanding the Fraud Trend & Refund Ratio Chart
+
+The dashboard displays two critical metrics in a dual-axis chart:
+
+**1. Fraud Events (Red Line - Left Axis)**
+- **What it shows**: The count of transactions flagged as fraudulent per day
+- **Range**: Absolute number (0-100+)
+- **Interpretation**:
+  - Baseline helps identify normal fraud activity
+  - Spikes indicate potential fraud attacks or system issues
+  - Downward trends show improved fraud detection or prevention
+- **Example**: "We had 8 fraud incidents on Jan 1, rising to 15 on Jan 2"
+
+**2. Refund Ratio (Blue Line - Right Axis)**
+- **What it shows**: The percentage of transactions that were refunded
+- **Formula**: `(Refunds / Total Payments) × 100 = %`
+- **Range**: 0-100%
+- **Interpretation**:
+  - 2-5%: Healthy range (normal customer satisfaction)
+  - 5-10%: Elevated (investigate issues, product quality)
+  - 10%+: Critical (chargeback risk, payment gateway issues)
+  - Correlates with fraud: High fraud often triggers refunds
+- **Example**: "If 100 payments were processed and 3 were refunded, refund ratio = 3%"
+
+**Why Together?**
+These metrics reveal critical relationships:
+- **High Fraud + High Refunds**: Fraudulent transactions may be auto-refunded
+- **Low Fraud + High Refunds**: Customer satisfaction issue (product/shipping)
+- **High Fraud + Low Refunds**: Detection working but refund process slow
+- **Low Fraud + Low Refunds**: Healthy system state ✅
+
+**How to Use:**
+1. Click "Simulate Transaction" to add test data for the current day
+2. Select time range: Last 7 days, 30 days, or all-time
+3. Hover over data points to see exact values
+4. Monitor for unusual patterns or spikes
+
 ### Files Page
 - **URL**: `http://localhost:3000/files`
 - **Features**:
@@ -558,6 +595,201 @@ curl http://localhost:9090/api/v1/query?query=up
 - **MongoDB**: Document database for persistent data
 - **Redis**: Queue and cache layer for workers
 - **Supabase**: Secure file storage with signed URLs
+
+---
+
+## 📊 Analytics & Fraud Detection Guide
+
+### Fraud Trendline & Refund Ratio - Complete Explanation
+
+#### **What Data Is Displayed?**
+
+The dashboard displays a **dual-axis time-series chart** tracking two key metrics over 14 days:
+
+| Metric | Line Color | Axis | Data Type | Purpose |
+|--------|-----------|------|-----------|---------|
+| **Fraud Events** | Red 🔴 | Left (Count) | Integer (0-100+) | Tracks daily fraud incident count |
+| **Refund Ratio** | Blue 🔵 | Right (%) | Percentage (0-100%) | Shows refund rate as % of transactions |
+
+#### **Fraud Events (Red Line)**
+
+**Definition**: The absolute number of transactions flagged as potentially fraudulent on a given day.
+
+**Data Source**: `TransactionLog` collection filtered by `eventType: "fraud"`
+
+**Calculation**:
+```
+Fraud Count = COUNT(transactions WHERE eventType LIKE "fraud" FOR EACH DAY)
+```
+
+**Interpretation Guide**:
+- **0-3 events/day**: ✅ Excellent (very low fraud baseline)
+- **3-8 events/day**: 🟡 Normal (acceptable fraud rate for processing volume)
+- **8-15 events/day**: 🟠 Elevated (investigate patterns, check for attacks)
+- **15+ events/day**: 🔴 Critical (immediate investigation required)
+
+**Real-World Examples**:
+- Day 1: 5 fraud events = 5 transactions detected as fraudulent out of (typically) 100-200 total
+- Day 2: 12 fraud events = System flagged 12 suspicious transactions
+
+**Actions to Take**:
+- **Spike Detection**: If fraud jumps from 5 to 20 overnight, investigate:
+  - New fraud attack (test with honeypot email)
+  - System misconfiguration (check fraud detection thresholds)
+  - Volume surge (legitimate business spike)
+- **Trend Analysis**: Multi-day uptrend indicates systematic issue
+- **Correlation**: Compare with refund ratio to find root cause
+
+#### **Refund Ratio (Blue Line)**
+
+**Definition**: The percentage of transactions that were refunded, calculated as `(Refunds / Total Payments) × 100`
+
+**Data Source**: `TransactionLog` collection
+- Numerator: COUNT of `eventType: "refund"` per day
+- Denominator: COUNT of `eventType: "payment"` per day
+
+**Calculation**:
+```
+Refund Ratio (%) = (Count of Refunds / Count of Payments) × 100
+
+Example:
+- 100 payments processed on Jan 1
+- 3 refunds issued on Jan 1
+- Refund Ratio = (3 / 100) × 100 = 3%
+```
+
+**Interpretation Guide**:
+- **0-2%**: ✅ Excellent (world-class customer satisfaction)
+- **2-5%**: ✅ Good (healthy baseline for most businesses)
+- **5-10%**: 🟡 Elevated (investigate, customer issues or fraud)
+- **10-15%**: 🟠 Concerning (potential chargeback liability)
+- **15%+**: 🔴 Critical (business-threatening, must investigate)
+
+**Real-World Examples**:
+- E-commerce platform: 3-5% typical (shipping issues, wrong items)
+- SaaS platform: 1-2% typical (service quality is high)
+- High-risk: 8-12% (indicates serious system issues)
+
+**Root Causes**:
+| Refund Reason | Signal | Solution |
+|---------------|--------|----------|
+| **Product Quality** | Correlated with low fraud | Improve QA, better product info |
+| **Shipping Issues** | High in logistics heavy business | Improve fulfillment process |
+| **Payment Failures** | No fraud, just processing errors | Check payment gateway config |
+| **Fraud** | High fraud + high refunds | Strengthen fraud detection |
+| **Customer Service** | Voluntary refunds | Improve support, onboarding |
+
+#### **Correlation Analysis: When Lines Move Together**
+
+**Scenario 1: Both Rise 📈📈**
+```
+Fraud ↑ + Refund Ratio ↑
+Likely Cause: Coordinated fraud attack auto-triggering refunds
+Action: Block suspicious customers, investigate fraud detection thresholds
+```
+
+**Scenario 2: Fraud High, Refunds Low 📈📉**
+```
+Fraud ↑ + Refund Ratio ↓
+Likely Cause: Detection working but refund process is slow
+Action: Expedite refund processing, check payment processor queue
+```
+
+**Scenario 3: Fraud Low, Refunds High 📉📈**
+```
+Fraud ↓ + Refund Ratio ↑
+Likely Cause: Legitimate customers requesting refunds (satisfaction issue)
+Action: Investigate product quality, shipping, customer support
+```
+
+**Scenario 4: Both Stable ➡️➡️**
+```
+Fraud ➡️ + Refund Ratio ➡️
+Ideal State: System operating normally ✅
+Action: Maintain current configuration, monitor for anomalies
+```
+
+#### **How the Data is Generated**
+
+**Backend Aggregation** (`/api/fraud/trend` endpoint):
+
+```javascript
+// Aggregates last 14 days of data per day
+Pipeline:
+1. Match transactions from start date to today
+2. Group by date
+3. Count fraud, refund, and payment events
+4. Calculate ratios
+5. Return sorted by date
+```
+
+**Response Format**:
+```json
+[
+  {
+    "date": "2026-01-03",
+    "fraudCount": 6,
+    "fraudRate": 4.2,           // (fraud / total) × 100
+    "refundCount": 2,
+    "paymentCount": 143,
+    "refundRatio": 0.014,        // 1.4% as decimal
+    "refundPercentage": 1.4,     // 1.4% as percentage
+    "totalAmount": 14300
+  },
+  ...
+]
+```
+
+**Chart Rendering** (FraudTrend.jsx):
+- Red line: plots `fraudCount` on left Y-axis
+- Blue line: plots `refundPercentage` on right Y-axis
+- X-axis: formatted dates (Jan 03, Jan 04, etc.)
+- Hover: shows exact values for each data point
+
+#### **Testing & Simulation**
+
+To see the charts in action:
+
+1. **Click "Simulate Transaction"** button on dashboard
+   - Adds a fake transaction for today
+   - Updates chart with new data point
+   - Useful for testing without real transactions
+
+2. **Generate Real Data**:
+   ```bash
+   # Via API or admin panel, create transactions:
+   # - POST /api/transactions/create
+   # - Include eventType: "payment", "fraud", or "refund"
+   ```
+
+3. **Filter by Time Range**:
+   - **Last 7 days**: Recent trends only
+   - **Last 30 days**: Monthly patterns
+   - **All**: Historical data
+
+#### **Key Metrics & Benchmarks**
+
+```
+Industry Benchmarks (healthy state):
+┌─────────────────┬──────────────┬──────────────┐
+│ Industry        │ Fraud Rate   │ Refund Ratio │
+├─────────────────┼──────────────┼──────────────┤
+│ E-Commerce      │ 1-3%         │ 3-5%         │
+│ SaaS            │ 0.5-1%       │ 1-2%         │
+│ Digital Goods   │ 0.1-0.5%     │ 0.5-1%       │
+│ High-Risk       │ 5-10%        │ 8-12%        │
+└─────────────────┴──────────────┴──────────────┘
+```
+
+#### **Troubleshooting**
+
+| Problem | Cause | Solution |
+|---------|-------|----------|
+| Chart shows no data | No transactions | Click "Simulate Transaction" |
+| Both metrics are 0 | MongoDB not connected | Check DB connection |
+| Unusual spikes | Legitimate business event | Check transaction logs |
+| Ratio > 100% | Duplicate refunds | Investigate duplicate logic |
+| Chart won't load | API endpoint down | Check `/api/fraud/trend` |
 
 ---
 

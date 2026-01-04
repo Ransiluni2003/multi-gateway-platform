@@ -4,12 +4,28 @@ import type { NextRequest } from "next/server";
 export function middleware(req: NextRequest) {
   const token = req.cookies.get("token")?.value;
   const userCookie = req.cookies.get("user")?.value;
-  const user = userCookie ? JSON.parse(userCookie) : null;
+  
+  let user = null;
+  try {
+    if (userCookie && userCookie !== "undefined" && userCookie.length > 0) {
+      user = JSON.parse(userCookie);
+    }
+  } catch (e) {
+    // Invalid cookie, ignore it
+    user = null;
+  }
 
   const url = req.nextUrl.clone();
 
-  // 1️⃣ Redirect unauthenticated users to /login
-  if (!token && !url.pathname.startsWith("/login")) {
+  // Redirect root to login explicitly
+  if (url.pathname === "/") {
+    url.pathname = "/login";
+    return NextResponse.redirect(url);
+  }
+
+  // 1️⃣ Redirect unauthenticated users to /login (require BOTH token AND valid user)
+  const hasValidAuth = token && user && user.role;
+  if (!hasValidAuth && !url.pathname.startsWith("/login") && !url.pathname.startsWith("/register")) {
     url.pathname = "/login";
     return NextResponse.redirect(url);
   }
@@ -42,5 +58,5 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/login"],
+  matcher: ["/", "/login", "/dashboard/:path*", "/register"],
 };
