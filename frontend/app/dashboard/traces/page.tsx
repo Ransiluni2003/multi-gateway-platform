@@ -10,7 +10,7 @@ interface Trace {
   path: string;
   method: string;
   status: number;
-  duration: number; // in microseconds
+  duration: number;
   ts: string;
 }
 
@@ -53,9 +53,8 @@ export default function TracesPage() {
         const data = await res.json();
         let filteredTraces = data.traces || [];
         
-        // Filter by request ID on client side (if backend doesn't support it)
         if (searchRequestId) {
-          filteredTraces = filteredTraces.filter((t) =>
+          filteredTraces = filteredTraces.filter((t: Trace) =>
             t.traceID.toLowerCase().includes(searchRequestId.toLowerCase())
           );
         }
@@ -78,17 +77,21 @@ export default function TracesPage() {
   };
 
   const handleViewSpans = (trace: Trace) => {
-    alert(`Viewing spans for trace: ${trace.traceID}\n\nService: ${trace.serviceName}\nPath: ${trace.path}\nMethod: ${trace.method}\nStatus: ${trace.status}\nDuration: ${(trace.duration / 1000).toFixed(2)}ms`);
-    // In a real system, this would open a detailed span viewer
+    const message = [
+      `Viewing spans for trace: ${trace.traceID}`,
+      `Service: ${trace.serviceName}`,
+      `Path: ${trace.path}`,
+      `Method: ${trace.method}`,
+      `Status: ${trace.status}`,
+      `Duration: ${(trace.duration / 1000).toFixed(2)}ms`
+    ].join('\n');
+    alert(message);
   };
 
-  if (!user) {
-    return null; // Loading auth state
-  }
+  if (!user) return null;
 
   return (
     <div className={styles.dashboard}>
-      {/* Navigation Bar */}
       <nav className={styles.navbar}>
         <div className={styles.navBrand}>Multi-Gateway Platform</div>
         <div className={styles.navLinks}>
@@ -108,196 +111,164 @@ export default function TracesPage() {
       </nav>
 
       <div style={{ padding: "24px", color: "#e6eef8" }}>
-      <h1>📊 Service Trace Viewer</h1>
-      <p style={{ color: "#cbd5e1", marginBottom: "24px" }}>
-        View and filter the last 10 API request traces with detailed span information.
-      </p>
+        <h1>🔍 Service Traces</h1>
+        <p style={{ color: "#cbd5e1", marginBottom: "20px" }}>
+          View the last 10 traces from your services. Filter by service name or request ID.
+        </p>
 
-      {/* Filters */}
-      <div
-        style={{
-          display: "flex",
-          gap: "12px",
-          marginBottom: "24px",
-          flexWrap: "wrap",
-        }}
-      >
-        <div>
-          <label style={{ display: "block", fontSize: "14px", marginBottom: "6px", color: "#cbd5e1" }}>
-            Filter by Service
-          </label>
+        <div style={{ display: "flex", gap: "12px", marginBottom: "24px" }}>
           <input
             type="text"
-            placeholder="e.g., api, payments"
+            placeholder="Filter by service name..."
             value={searchService}
             onChange={(e) => setSearchService(e.target.value)}
             style={{
-              background: "rgba(15, 23, 42, 0.8)",
-              border: "1px solid rgba(148, 163, 184, 0.25)",
+              flex: 1,
+              padding: "10px 16px",
+              background: "rgba(15, 23, 42, 0.6)",
+              border: "1px solid rgba(148, 163, 184, 0.3)",
               borderRadius: "8px",
               color: "#e6eef8",
-              padding: "10px",
               fontSize: "14px",
-              width: "200px",
             }}
           />
-        </div>
-
-        <div>
-          <label style={{ display: "block", fontSize: "14px", marginBottom: "6px", color: "#cbd5e1" }}>
-            Filter by Request ID
-          </label>
           <input
             type="text"
-            placeholder="e.g., g2m6rv9kddo"
+            placeholder="Filter by request ID..."
             value={searchRequestId}
             onChange={(e) => setSearchRequestId(e.target.value)}
             style={{
-              background: "rgba(15, 23, 42, 0.8)",
-              border: "1px solid rgba(148, 163, 184, 0.25)",
+              flex: 1,
+              padding: "10px 16px",
+              background: "rgba(15, 23, 42, 0.6)",
+              border: "1px solid rgba(148, 163, 184, 0.3)",
               borderRadius: "8px",
               color: "#e6eef8",
-              padding: "10px",
               fontSize: "14px",
-              width: "200px",
             }}
           />
         </div>
-      </div>
 
-      {error && (
-        <div className={styles.error} style={{ marginBottom: "20px" }}>
-          ⚠️ {error}
-        </div>
-      )}
-
-      {loading ? (
-        <div style={{ textAlign: "center", padding: "40px", color: "#94a3b8" }}>
-          Loading traces...
-        </div>
-      ) : traces.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "40px", color: "#94a3b8" }}>
-          No traces found. Try adjusting your filters.
-        </div>
-      ) : (
-        <div
-          style={{
-            background: "rgba(15, 23, 42, 0.5)",
-            border: "1px solid rgba(148, 163, 184, 0.15)",
-            borderRadius: "12px",
-            padding: "16px",
-            overflowX: "auto",
-          }}
-        >
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr style={{ borderBottom: "1px solid rgba(148, 163, 184, 0.2)" }}>
-                <th style={{ padding: "12px", textAlign: "left" }}>Request ID</th>
-                <th style={{ padding: "12px", textAlign: "left" }}>Service</th>
-                <th style={{ padding: "12px", textAlign: "left" }}>Method</th>
-                <th style={{ padding: "12px", textAlign: "left" }}>Path</th>
-                <th style={{ padding: "12px", textAlign: "left" }}>Status</th>
-                <th style={{ padding: "12px", textAlign: "left" }}>Duration (ms)</th>
-                <th style={{ padding: "12px", textAlign: "left" }}>Timestamp</th>
-                <th style={{ padding: "12px", textAlign: "center" }}>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {traces.map((trace) => (
-                <tr
-                  key={trace.traceID}
-                  style={{ borderBottom: "1px solid rgba(148, 163, 184, 0.1)" }}
-                >
-                  <td style={{ padding: "12px" }}>
-                    <code style={{ color: "#a78bfa", fontSize: "12px" }}>
-                      {trace.traceID.slice(0, 12)}
-                    </code>
-                  </td>
-                  <td style={{ padding: "12px" }}>
-                    <span
-                      style={{
-                        background: "rgba(167, 139, 250, 0.15)",
-                        color: "#a78bfa",
-                        padding: "4px 8px",
-                        borderRadius: "4px",
-                        fontSize: "12px",
-                        fontWeight: "600",
-                      }}
-                    >
-                      {trace.serviceName}
-                    </span>
-                  </td>
-                  <td style={{ padding: "12px" }}>
-                    <span
-                      style={{
-                        background:
-                          trace.method === "GET"
-                            ? "rgba(59, 130, 246, 0.2)"
-                            : trace.method === "POST"
-                            ? "rgba(34, 197, 94, 0.2)"
-                            : "rgba(249, 115, 22, 0.2)",
-                        color:
-                          trace.method === "GET"
-                            ? "#3b82f6"
-                            : trace.method === "POST"
-                            ? "#22c55e"
-                            : "#f97316",
-                        padding: "4px 8px",
-                        borderRadius: "4px",
-                        fontSize: "12px",
-                        fontWeight: "600",
-                      }}
-                    >
-                      {trace.method}
-                    </span>
-                  </td>
-                  <td style={{ padding: "12px", fontSize: "12px" }}>{trace.path}</td>
-                  <td style={{ padding: "12px" }}>
-                    <span
-                      style={{
-                        color: trace.status === 200 ? "#22c55e" : trace.status >= 300 && trace.status < 400 ? "#f97316" : "#ef4444",
-                        fontWeight: "600",
-                      }}
-                    >
-                      {trace.status}
-                    </span>
-                  </td>
-                  <td style={{ padding: "12px" }}>
-                    {(trace.duration / 1000).toFixed(2)}
-                  </td>
-                  <td style={{ padding: "12px", fontSize: "12px", color: "#94a3b8" }}>
-                    {new Date(trace.ts).toLocaleTimeString()}
-                  </td>
-                  <td style={{ padding: "12px", textAlign: "center" }}>
-                    <button
-                      onClick={() => handleViewSpans(trace)}
-                      style={{
-                        background: "rgba(59, 130, 246, 0.15)",
-                        color: "#3b82f6",
-                        border: "1px solid rgba(59, 130, 246, 0.3)",
-                        borderRadius: "6px",
-                        padding: "6px 12px",
-                        cursor: "pointer",
-                        fontWeight: "600",
-                        fontSize: "12px",
-                        transition: "all 0.2s",
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = "rgba(59, 130, 246, 0.25)";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = "rgba(59, 130, 246, 0.15)";
-                      }}
-                    >
-                      View Spans →
-                    </button>
-                  </td>
+        {loading ? (
+          <div style={{ textAlign: "center", padding: "40px", color: "#94a3b8" }}>
+            Loading traces...
+          </div>
+        ) : error ? (
+          <div style={{ textAlign: "center", padding: "40px", color: "#ef4444" }}>
+            Error: {error}
+          </div>
+        ) : traces.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "40px", color: "#94a3b8" }}>
+            No traces found matching your filters.
+          </div>
+        ) : (
+          <div style={{ overflowX: "auto" }}>
+            <table
+              style={{
+                width: "100%",
+                borderCollapse: "collapse",
+                background: "rgba(15, 23, 42, 0.6)",
+                border: "1px solid rgba(148, 163, 184, 0.15)",
+                borderRadius: "12px",
+                overflow: "hidden",
+              }}
+            >
+              <thead>
+                <tr style={{ background: "rgba(30, 41, 59, 0.8)" }}>
+                  <th style={{ padding: "12px", textAlign: "left", color: "#cbd5e1", fontWeight: "600" }}>
+                    Request ID
+                  </th>
+                  <th style={{ padding: "12px", textAlign: "left", color: "#cbd5e1", fontWeight: "600" }}>
+                    Service
+                  </th>
+                  <th style={{ padding: "12px", textAlign: "left", color: "#cbd5e1", fontWeight: "600" }}>
+                    Method
+                  </th>
+                  <th style={{ padding: "12px", textAlign: "left", color: "#cbd5e1", fontWeight: "600" }}>
+                    Path
+                  </th>
+                  <th style={{ padding: "12px", textAlign: "left", color: "#cbd5e1", fontWeight: "600" }}>
+                    Status
+                  </th>
+                  <th style={{ padding: "12px", textAlign: "left", color: "#cbd5e1", fontWeight: "600" }}>
+                    Duration (ms)
+                  </th>
+                  <th style={{ padding: "12px", textAlign: "left", color: "#cbd5e1", fontWeight: "600" }}>
+                    Timestamp
+                  </th>
+                  <th style={{ padding: "12px", textAlign: "left", color: "#cbd5e1", fontWeight: "600" }}>
+                    Actions
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+              </thead>
+              <tbody>
+                {traces.map((trace, idx) => (
+                  <tr
+                    key={trace.traceID}
+                    style={{
+                      borderTop: idx > 0 ? "1px solid rgba(148, 163, 184, 0.1)" : "none",
+                    }}
+                  >
+                    <td style={{ padding: "12px", color: "#94a3b8", fontFamily: "monospace", fontSize: "12px" }}>
+                      {trace.traceID.substring(0, 8)}...
+                    </td>
+                    <td style={{ padding: "12px", color: "#e6eef8" }}>{trace.serviceName}</td>
+                    <td style={{ padding: "12px", color: "#a78bfa", fontWeight: "600" }}>{trace.method}</td>
+                    <td style={{ padding: "12px", color: "#94a3b8", fontSize: "13px" }}>{trace.path}</td>
+                    <td style={{ padding: "12px" }}>
+                      <span
+                        style={{
+                          padding: "4px 8px",
+                          borderRadius: "4px",
+                          fontSize: "12px",
+                          fontWeight: "600",
+                          background:
+                            trace.status >= 200 && trace.status < 300
+                              ? "rgba(34, 197, 94, 0.2)"
+                              : trace.status >= 400
+                              ? "rgba(239, 68, 68, 0.2)"
+                              : "rgba(251, 191, 36, 0.2)",
+                          color:
+                            trace.status >= 200 && trace.status < 300
+                              ? "#22c55e"
+                              : trace.status >= 400
+                              ? "#ef4444"
+                              : "#fbbf24",
+                        }}
+                      >
+                        {trace.status}
+                      </span>
+                    </td>
+                    <td style={{ padding: "12px", color: "#e6eef8" }}>
+                      {(trace.duration / 1000).toFixed(2)}
+                    </td>
+                    <td style={{ padding: "12px", color: "#94a3b8", fontSize: "13px" }}>
+                      {new Date(trace.ts).toLocaleString()}
+                    </td>
+                    <td style={{ padding: "12px" }}>
+                      <button
+                        onClick={() => handleViewSpans(trace)}
+                        style={{
+                          padding: "6px 12px",
+                          background: "rgba(167, 139, 250, 0.15)",
+                          color: "#a78bfa",
+                          border: "1px solid rgba(167, 139, 250, 0.3)",
+                          borderRadius: "6px",
+                          cursor: "pointer",
+                          fontSize: "12px",
+                          fontWeight: "600",
+                        }}
+                      >
+                        View Spans
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

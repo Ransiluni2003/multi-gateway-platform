@@ -104,9 +104,8 @@ export default function Dashboard() {
         <div className={styles.navBrand}>Multi-Gateway Platform</div>
         <div className={styles.navLinks}>
           <a href="/dashboard" className={styles.navLink}>Dashboard</a>
-          <a href="/dashboard/payments" className={styles.navLink}>Payments</a>
-          <a href="/dashboard/fraud" className={styles.navLink}>Fraud Logs</a>
-          <a href="/dashboard/reports" className={styles.navLink}>Reports</a>
+          <a href="/dashboard/traces" className={styles.navLink}>Traces</a>
+          <a href="/dashboard/downloads" className={styles.navLink}>Downloads</a>
           {user.role === 'administrator' && (
             <a href="/dashboard/admin" className={styles.navLink}>Admin</a>
           )}
