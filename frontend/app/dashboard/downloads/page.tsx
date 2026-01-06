@@ -216,12 +216,34 @@ export default function DownloadsPage() {
   };
 
   return (
+    <div className={styles.dashboard}>
+      {/* Navigation Bar */}
+      <nav className={styles.navbar}>
+        <div className={styles.navBrand}>Multi-Gateway Platform</div>
+        <div className={styles.navLinks}>
+          <a href="/dashboard" className={styles.navLink}>Dashboard</a>
+          <a href="/dashboard/traces" className={styles.navLink}>Traces</a>
+          <a href="/dashboard/downloads" className={styles.navLink}>Downloads</a>
+        </div>
+        <button
+          onClick={() => {
+            localStorage.removeItem("authToken");
+            localStorage.removeItem("user");
+            router.push("/login");
+          }}
+          className={styles.navLogout}
+          style={{ marginLeft: "auto" }}
+        >
+          Logout
+        </button>
+      </nav>
+
     <div style={{ padding: "32px", color: "#e2e8f0", background: "#0f172a", minHeight: "100vh" }}>
       {toast && (
         <div
           style={{
             position: "fixed",
-            top: "80px",
+            top: "120px",
             right: "20px",
             background:
               toast.type === "success"
@@ -374,6 +396,7 @@ export default function DownloadsPage() {
           ))}
         </div>
       )}
+    </div>
     </div>
   );
 }
