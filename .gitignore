@@ -12,6 +12,8 @@ frontend/out/
 # Env files
 .env
 .env.*
+!backend/.env.example
+!frontend/.env.example
 
 # Logs
 logs/
