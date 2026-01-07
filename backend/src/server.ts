@@ -22,6 +22,7 @@ import tracesRoutes from './routes/tracesRoutes';
 import fraudRoutes from "./routes/fraudRoutes";
 import analyticsRouter from "./routes/analytics";
 import { traceCapture } from "./middleware/traceCapture";
+import { recordSpan, withSpanTracking } from "./utils/spanTracker";
 
 // Local Imports
 import connectMongo from "./config/db";
@@ -81,6 +82,13 @@ if (logtailToken) {
 const app = express();
 // Health endpoint for load testing (must be after app is declared)
 app.use(express.json());
+
+// Initialize request start time for span tracking
+app.use((req: Request, res: Response, next: NextFunction) => {
+  (req as any).startTime = Date.now();
+  next();
+});
+
 // Capture lightweight traces for the admin trace viewer
 app.use(traceCapture);
 app.use(helmet());
@@ -126,6 +134,29 @@ app.use("/api/jobs", jobsRoutes);
 app.use("/api/files", filesRoutes);
 app.use("/api/traces", tracesRoutes);
 app.use("/api/fraud", fraudRoutes);
+// Minimal forwarding to payments service to support E2E test on port 5000
+app.post("/api/payments/pay", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const start = Date.now();
+    const resp = await axiosInstance.post("http://localhost:4001/api/payments/pay", req.body, {
+      headers: {
+        // Forward trace header if present; ensure one is always set
+        "x-trace-id": (req as any).traceId || req.headers["x-trace-id"] || "unknown",
+      },
+      timeout: 10000,
+    });
+
+    // Record a span representing the external service call
+    recordSpan(req as any, "Call payments service", "payments", Date.now() - start, resp.status);
+
+    // Preserve the trace id header on the response
+    res.setHeader("X-Trace-ID", (req as any).traceId || "unknown");
+    res.status(resp.status).json(resp.data);
+  } catch (err: any) {
+    recordSpan(req as any, "Payments call failed", "payments", 1, 500);
+    next(err);
+  }
+});
 app.use("/api/analytics", analyticsRouter);
 
 // ==========================
