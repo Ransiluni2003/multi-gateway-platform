@@ -15,6 +15,11 @@ interface RequestWithTrace extends Request {
 }
 
 export function traceCapture(req: RequestWithTrace, res: Response, next: NextFunction) {
+    // Skip tracing for the traces API itself to avoid recursive trace collection
+    if (req.originalUrl.startsWith('/api/traces')) {
+        return next();
+    }
+
     const start = Date.now();
     const traceId = (req.headers["x-trace-id"] as string) || (req.headers['x-tarce-id'] as string) || '';
     const spanId = Math.random().toString(36).slice(2, 11);
