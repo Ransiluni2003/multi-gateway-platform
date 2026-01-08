@@ -8,7 +8,8 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-mongoose.connect(process.env.MONGO_URI);
+const mongoUri = process.env.MONGO_URL || process.env.MONGO_URI || 'mongodb://it23143654_db_user:Company123@localhost:27017/multi_gateway_db?authSource=admin';
+mongoose.connect(mongoUri);
 
 const traceSchema = new mongoose.Schema({
   traceId: String,
