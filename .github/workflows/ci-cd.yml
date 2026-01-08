@@ -1,93 +1,414 @@
-- name: List files in root
-        run: ls -al
-        
-name: CI/CD
+name: CI/CD Pipeline
 
-   0n:
+on:
   push:
-    branches: [ main ]
+    branches: [ main, pinithi ]
   pull_request:
     branches: [ main ]
 
+env:
+  NODE_VERSION: '20'
+  DEPLOYMENT_TIMEOUT: 600 # 10 minutes
+
 jobs:
-  build:
+  # Job 1: Build and Test
+  build-and-test:
+    name: Build and Test Services
     runs-on: ubuntu-latest
+    outputs:
+      backend-version: ${{ steps.version.outputs.backend }}
+      frontend-version: ${{ steps.version.outputs.frontend }}
+    
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Create .env file from GitHub Secrets
-        run: |
-          echo "MONGO_URL=${{ secrets.MONGO_URL }}" >> .env
-          echo "RAILWAY_API_KEY=${{ secrets.RAILWAY_API_KEY }}" >> .env
-          echo "REDIS_URL=${{ secrets.REDIS_URL }}" >> .env
-          echo "SUPABASE_KEY=${{ secrets.SUPABASE_KEY }}" >> .env
-          echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" >> .env
-          echo "VERCEL_ORG_ID=${{ secrets.VERCEL_ORG_ID }}" >> .env
-          echo "VERCEL_PROJECT_ID=${{ secrets.VERCEL_PROJECT_ID }}" >> .env
-          echo "VERCEL_TOKEN=${{ secrets.VERCEL_TOKEN }}" >> .env
-          echo "MONGO_USER=${{ secrets.MONGO_USER }}" >> .env
-          echo "MONGO_PASS=${{ secrets.MONGO_PASS }}" >> .env
-          echo "REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}" >> .env
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v2
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-
-      - name: Login to DockerHub
-        if: ${{ secrets.DOCKER_USERNAME && secrets.DOCKER_PASSWORD }}
-        uses: docker/login-action@v2
+      - name: Checkout code
+        uses: actions/checkout@v4
         with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+          fetch-depth: 0 # Full history for version tagging
 
-      - name: Build backend images
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Generate version tags
+        id: version
         run: |
-          docker buildx build --platform linux/amd64 -f backend/Dockerfile -t multi-gateway-backend:latest --load ./backend
-          docker buildx build --platform linux/amd64 -f backend/src/services/payments/Dockerfile -t multi-gateway-payments:latest --load ./backend
-          docker buildx build --platform linux/amd64 -f backend/src/services/analytics/Dockerfile -t multi-gateway-analytics:latest --load ./backend
-          docker buildx build --platform linux/amd64 -f backend/src/services/notifications/Dockerfile -t multi-gateway-notifications:latest --load ./backend
+          TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          echo "backend=backend-${TIMESTAMP}-${SHORT_SHA}" >> $GITHUB_OUTPUT
+          echo "frontend=frontend-${TIMESTAMP}-${SHORT_SHA}" >> $GITHUB_OUTPUT
+          echo "timestamp=${TIMESTAMP}" >> $GITHUB_OUTPUT
 
-          docker compose -f docker-compose.yml -f docker-compose.override.yml up -d --build
+      - name: Install root dependencies
+        run: npm install
 
-      - name: Deploy Backend to Railway
-        run: |
-          npm install -g railway
-          railway up --token ${{ secrets.RAILWAY_TOKEN }} || echo "Railway deploy failed" > railway_error.log
+      - name: Install backend dependencies
+        working-directory: ./backend
+        run: npm ci
+
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Lint backend
+        working-directory: ./backend
+        run: npm run lint
         continue-on-error: true
 
-      - name: Rollback Railway on failure
-        if: failure()
-        run: |
-          echo "Rolling back Railway deployment..."
-          railway rollback --token ${{ secrets.RAILWAY_TOKEN }}
+      - name: Build backend
+        working-directory: ./backend
+        run: npm run build
 
-      - name: Deploy Frontend to Vercel
-        run: |
-          npm install -g vercel
-          vercel --prod --token ${{ secrets.VERCEL_TOKEN }} || echo "Vercel deploy failed" > vercel_error.log
+      - name: Build frontend
+        working-directory: ./frontend
+        run: npm run build
+        env:
+          NODE_ENV: production
+
+      - name: Run backend tests
+        working-directory: ./backend
+        run: npm test
         continue-on-error: true
 
-      - name: Rollback Vercel on failure
-        if: failure()
+      - name: Run frontend tests
+        working-directory: ./frontend
+        run: npm test
+        continue-on-error: true
+
+      - name: Cache build artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            backend/dist
+            frontend/.next
+          key: build-${{ github.sha }}
+
+  # Job 2: Deploy Backend to Railway
+  deploy-backend:
+    name: Deploy Backend to Railway
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/pinithi')
+    outputs:
+      deployment-id: ${{ steps.deploy.outputs.deployment_id }}
+      deployment-url: ${{ steps.deploy.outputs.deployment_url }}
+      rollback-id: ${{ steps.get-current.outputs.deployment_id }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Restore build cache
+        uses: actions/cache@v4
+        with:
+          path: backend/dist
+          key: build-${{ github.sha }}
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Get current Railway deployment (for rollback)
+        id: get-current
         run: |
-          echo "Rolling back Vercel deployment..."
-          # Example: promote previous deployment (requires Vercel CLI/API)
-          # vercel promote <previous-deployment-id> --token ${{ secrets.VERCEL_TOKEN }}
+          CURRENT_DEPLOYMENT=$(railway status --json --token ${{ secrets.RAILWAY_TOKEN }} 2>/dev/null | jq -r '.latestDeploymentId // "none"')
+          echo "deployment_id=${CURRENT_DEPLOYMENT}" >> $GITHUB_OUTPUT
+          echo "📦 Current deployment: ${CURRENT_DEPLOYMENT}"
+        continue-on-error: true
 
-      - name: Run integration tests
-        run: echo "Run your integration tests here"
+      - name: Deploy to Railway
+        id: deploy
+        run: |
+          echo "🚀 Deploying backend to Railway..."
+          
+          # Deploy and capture output
+          DEPLOY_OUTPUT=$(railway up --token ${{ secrets.RAILWAY_TOKEN }} --json 2>&1 | tee railway_deploy.log)
+          DEPLOY_EXIT_CODE=$?
+          
+          if [ $DEPLOY_EXIT_CODE -eq 0 ]; then
+            DEPLOYMENT_ID=$(echo "$DEPLOY_OUTPUT" | jq -r '.deploymentId // "unknown"')
+            DEPLOYMENT_URL=$(railway domain --token ${{ secrets.RAILWAY_TOKEN }} 2>/dev/null || echo "https://backend.railway.app")
+            
+            echo "deployment_id=${DEPLOYMENT_ID}" >> $GITHUB_OUTPUT
+            echo "deployment_url=${DEPLOYMENT_URL}" >> $GITHUB_OUTPUT
+            echo "✅ Railway deployment successful: ${DEPLOYMENT_ID}"
+            exit 0
+          else
+            echo "❌ Railway deployment failed with exit code: ${DEPLOY_EXIT_CODE}"
+            cat railway_deploy.log
+            exit 1
+          fi
+        timeout-minutes: 10
 
-      - name: Upload error logs
-        if: failure()
+      - name: Wait for Railway service health
+        run: |
+          echo "⏳ Waiting for Railway service to be healthy..."
+          HEALTH_URL="${{ steps.deploy.outputs.deployment_url }}/health"
+          MAX_ATTEMPTS=30
+          ATTEMPT=0
+          
+          while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$HEALTH_URL" || echo "000")
+            
+            if [ "$HTTP_CODE" = "200" ]; then
+              echo "✅ Railway service is healthy (HTTP $HTTP_CODE)"
+              exit 0
+            fi
+            
+            echo "⏳ Attempt $((ATTEMPT+1))/$MAX_ATTEMPTS: Health check returned HTTP $HTTP_CODE"
+            sleep 10
+            ATTEMPT=$((ATTEMPT+1))
+          done
+          
+          echo "❌ Railway service failed health checks after $MAX_ATTEMPTS attempts"
+          exit 1
+        timeout-minutes: 5
+
+      - name: Upload Railway deployment logs
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: deploy-error-logs
-          path: |
-            railway_error.log
-            vercel_error.log
+          name: railway-deployment-logs
+          path: railway_deploy.log
+          retention-days: 30
 
-      - name: Notify on failure
-        if: failure()
-        run: echo "Deployment failed! Send notification here (Slack, email, etc.)"
+  # Job 3: Deploy Frontend to Vercel
+  deploy-frontend:
+    name: Deploy Frontend to Vercel
+    runs-on: ubuntu-latest
+    needs: [build-and-test, deploy-backend]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/pinithi')
+    outputs:
+      deployment-id: ${{ steps.deploy.outputs.deployment_id }}
+      deployment-url: ${{ steps.deploy.outputs.deployment_url }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Restore build cache
+        uses: actions/cache@v4
+        with:
+          path: frontend/.next
+          key: build-${{ github.sha }}
+
+      - name: Install Vercel CLI
+        run: npm install -g vercel
+
+      - name: Pull Vercel environment
+        working-directory: ./frontend
+        run: |
+          vercel pull --yes --environment=production \
+            --token ${{ secrets.VERCEL_TOKEN }} \
+            2>&1 | tee vercel_pull.log
+
+      - name: Deploy to Vercel
+        id: deploy
+        working-directory: ./frontend
+        run: |
+          echo "🚀 Deploying frontend to Vercel..."
+          
+          DEPLOY_OUTPUT=$(vercel deploy --prod \
+            --token ${{ secrets.VERCEL_TOKEN }} \
+            --build-env NEXT_PUBLIC_API_URL=${{ needs.deploy-backend.outputs.deployment-url }} \
+            2>&1 | tee vercel_deploy.log)
+          
+          DEPLOY_EXIT_CODE=$?
+          
+          if [ $DEPLOY_EXIT_CODE -eq 0 ]; then
+            DEPLOYMENT_URL=$(echo "$DEPLOY_OUTPUT" | grep -o 'https://[^ ]*vercel\.app' | head -1)
+            DEPLOYMENT_ID=$(vercel ls --token ${{ secrets.VERCEL_TOKEN }} --meta githubCommitSha=${{ github.sha }} --json | jq -r '.[0].uid // "unknown"')
+            
+            echo "deployment_id=${DEPLOYMENT_ID}" >> $GITHUB_OUTPUT
+            echo "deployment_url=${DEPLOYMENT_URL}" >> $GITHUB_OUTPUT
+            echo "✅ Vercel deployment successful: ${DEPLOYMENT_URL}"
+            exit 0
+          else
+            echo "❌ Vercel deployment failed with exit code: ${DEPLOY_EXIT_CODE}"
+            cat vercel_deploy.log
+            exit 1
+          fi
+        timeout-minutes: 10
+
+      - name: Wait for Vercel deployment health
+        run: |
+          echo "⏳ Waiting for Vercel deployment to be accessible..."
+          DEPLOYMENT_URL="${{ steps.deploy.outputs.deployment_url }}"
+          MAX_ATTEMPTS=20
+          ATTEMPT=0
+          
+          while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$DEPLOYMENT_URL" || echo "000")
+            
+            if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "301" ] || [ "$HTTP_CODE" = "302" ]; then
+              echo "✅ Vercel deployment is accessible (HTTP $HTTP_CODE)"
+              exit 0
+            fi
+            
+            echo "⏳ Attempt $((ATTEMPT+1))/$MAX_ATTEMPTS: Health check returned HTTP $HTTP_CODE"
+            sleep 10
+            ATTEMPT=$((ATTEMPT+1))
+          done
+          
+          echo "❌ Vercel deployment not accessible after $MAX_ATTEMPTS attempts"
+          exit 1
+        timeout-minutes: 5
+
+      - name: Upload Vercel deployment logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vercel-deployment-logs
+          path: frontend/vercel_*.log
+          retention-days: 30
+
+  # Job 4: Integration Tests Post-Deployment
+  integration-tests:
+    name: Run Integration Tests
+    runs-on: ubuntu-latest
+    needs: [deploy-backend, deploy-frontend]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/pinithi')
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Run smoke tests
+        run: |
+          echo "🧪 Running smoke tests against deployed services..."
+          
+          BACKEND_URL="${{ needs.deploy-backend.outputs.deployment-url }}"
+          FRONTEND_URL="${{ needs.deploy-frontend.outputs.deployment-url }}"
+          
+          # Test backend health endpoint
+          echo "Testing backend: $BACKEND_URL/health"
+          curl -f "$BACKEND_URL/health" || exit 1
+          
+          # Test frontend homepage
+          echo "Testing frontend: $FRONTEND_URL"
+          curl -f "$FRONTEND_URL" || exit 1
+          
+          echo "✅ Smoke tests passed"
+
+      - name: Run E2E tests (optional)
+        run: |
+          echo "🧪 E2E tests placeholder"
+          # Add Playwright or Cypress tests here
+        continue-on-error: true
+
+  # Job 5: Rollback on Failure
+  rollback:
+    name: Rollback on Failure
+    runs-on: ubuntu-latest
+    needs: [deploy-backend, deploy-frontend, integration-tests]
+    if: failure() && github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/pinithi')
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install CLIs
+        run: |
+          npm install -g @railway/cli vercel
+
+      - name: Rollback Railway deployment
+        if: needs.deploy-backend.outputs.rollback-id != 'none'
+        run: |
+          echo "🔄 Rolling back Railway to deployment: ${{ needs.deploy-backend.outputs.rollback-id }}"
+          railway rollback ${{ needs.deploy-backend.outputs.rollback-id }} --token ${{ secrets.RAILWAY_TOKEN }} || echo "Railway rollback failed"
+        continue-on-error: true
+
+      - name: Rollback Vercel deployment
+        run: |
+          echo "🔄 Rolling back Vercel deployment..."
+          # Get previous successful deployment
+          PREV_DEPLOYMENT=$(vercel ls --token ${{ secrets.VERCEL_TOKEN }} --json | jq -r '.[1].uid // "none"')
+          
+          if [ "$PREV_DEPLOYMENT" != "none" ]; then
+            vercel promote "$PREV_DEPLOYMENT" --token ${{ secrets.VERCEL_TOKEN }} || echo "Vercel rollback failed"
+          else
+            echo "⚠️ No previous Vercel deployment found for rollback"
+          fi
+        working-directory: ./frontend
+        continue-on-error: true
+
+      - name: Create rollback issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '🚨 Deployment Rollback Triggered',
+              body: `## Deployment Failure\n\n**Commit:** ${context.sha}\n**Branch:** ${context.ref}\n**Workflow:** ${context.workflow}\n\n**Backend Rollback:** ${{ needs.deploy-backend.outputs.rollback-id }}\n**Timestamp:** ${new Date().toISOString()}\n\n[View Workflow Run](${context.payload.repository.html_url}/actions/runs/${context.runId})`,
+              labels: ['deployment', 'rollback', 'urgent']
+            });
+
+  # Job 6: Notification
+  notify:
+    name: Send Deployment Notification
+    runs-on: ubuntu-latest
+    needs: [deploy-backend, deploy-frontend, integration-tests]
+    if: always() && github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/pinithi')
+    
+    steps:
+      - name: Determine deployment status
+        id: status
+        run: |
+          if [ "${{ needs.integration-tests.result }}" = "success" ]; then
+            echo "status=✅ SUCCESS" >> $GITHUB_OUTPUT
+            echo "color=28a745" >> $GITHUB_OUTPUT
+          else
+            echo "status=❌ FAILED" >> $GITHUB_OUTPUT
+            echo "color=d73a4a" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create deployment summary
+        run: |
+          cat > $GITHUB_STEP_SUMMARY << 'EOF'
+          ## 🚀 Deployment Summary
+          
+          **Status:** ${{ steps.status.outputs.status }}
+          **Commit:** [${{ github.sha }}](${{ github.event.head_commit.url }})
+          **Branch:** `${{ github.ref_name }}`
+          **Author:** @${{ github.actor }}
+          
+          ### Backend (Railway)
+          - **Deployment ID:** ${{ needs.deploy-backend.outputs.deployment-id }}
+          - **URL:** ${{ needs.deploy-backend.outputs.deployment-url }}
+          - **Status:** ${{ needs.deploy-backend.result }}
+          
+          ### Frontend (Vercel)
+          - **Deployment ID:** ${{ needs.deploy-frontend.outputs.deployment-id }}
+          - **URL:** ${{ needs.deploy-frontend.outputs.deployment-url }}
+          - **Status:** ${{ needs.deploy-frontend.result }}
+          
+          ### Integration Tests
+          - **Status:** ${{ needs.integration-tests.result }}
+          
+          ---
+          [View Full Logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          EOF
+
+      - name: Send Slack notification (optional)
+        if: always()
+        run: |
+          echo "📢 Send notification to Slack/Discord/Email"
+          # Example: curl -X POST -H 'Content-type: application/json' \
+          #   --data '{"text":"Deployment ${{ steps.status.outputs.status }}"}' \
+          #   ${{ secrets.SLACK_WEBHOOK_URL }}

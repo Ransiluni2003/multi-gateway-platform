@@ -7,7 +7,14 @@
     "build": "cd frontend && npm run build && cd ../backend && npm run build",
     "dev": "concurrently \"cd frontend && npm run dev\" \"cd backend && npm run dev\"",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "loadtest:ci": "npx artillery run loadtest/artillery.yml -o loadtest/report.json"
+    "loadtest:ci": "npx artillery run loadtest/artillery.yml -o loadtest/report.json",
+    "health-check": "node scripts/pre-deploy-health-check.js",
+    "validate-deploy": "node scripts/post-deploy-validation.js",
+    "rollback": "node scripts/rollback-deployment.js",
+    "deploy:local-test": "npm run health-check && echo 'Health checks passed!'",
+    "ci:setup": "echo 'Run scripts/setup-github-secrets.sh to configure GitHub Secrets'",
+    "ci:validate": "gh workflow run ci-cd.yml --ref main",
+    "ci:logs": "gh run list --workflow=ci-cd.yml --limit 5"
   },
   "repository": {
     "type": "git",
