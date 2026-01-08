@@ -96,10 +96,10 @@ class SimpleServiceLogger {
 }
 
 async function main() {
-  const redis = new Redis({
-    host: process.env.REDIS_HOST || "localhost",
-    port: parseInt(process.env.REDIS_PORT || "6379"),
-  });
+  const host = process.env.REDIS_HOST || "localhost";
+  const port = parseInt(process.env.REDIS_PORT || "6379");
+  const password = process.env.REDIS_PASSWORD || "redis-secure-password-dev";
+  const redis = new Redis({ host, port, password });
 
   const retryQueue = new SimpleRetryQueue(redis);
   const logger = new SimpleServiceLogger(redis, "test-service");

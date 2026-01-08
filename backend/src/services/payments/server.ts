@@ -16,8 +16,8 @@ Sentry.init({
   tracesSampleRate: 1.0,
 });
 
-// Health endpoint
-app.get("/api/payments/health", (req: Request, res: Response) => {
+// Health endpoints
+app.get(["/health", "/api/payments/health"], (req: Request, res: Response) => {
   res.json({
     status: "ok",
     service: "payments",

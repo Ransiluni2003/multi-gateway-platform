@@ -344,6 +344,7 @@ app.use(errorHandler);
   const server = app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
     logger.info(`Server started on port ${PORT}`);
+    console.log("   📌 For full functionality, use: docker compose up -d");
   });
 
   process.on("SIGTERM", async () => {

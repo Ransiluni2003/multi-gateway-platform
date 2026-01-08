@@ -1,12 +1,13 @@
 // core/eventbus/redisEventBus.ts
 import IORedis from "ioredis";
+import type Redis from "ioredis";
 import { injectTraceContext, extractTraceContext, withExtractedContext } from "../../utils/traceContext";
 import { trace } from "@opentelemetry/api";
 
-const redis = new IORedis(process.env.REDIS_URL as string);
+const redis = process.env.REDIS_URL ? new IORedis(process.env.REDIS_URL as string) : null;
 
-export const publisher = redis.duplicate();
-export const subscriber = redis.duplicate();
+export const publisher = redis ? redis.duplicate() : null;
+export const subscriber = redis ? redis.duplicate() : null;
 
 let isConnected = false;
 
@@ -14,6 +15,11 @@ let isConnected = false;
  * Initialize Redis connections for pub/sub
  */
 export async function initEventBus() {
+  if (!redis || !publisher || !subscriber) {
+    console.warn("⚠️  Redis not configured. Event bus functionality disabled.");
+    return;
+  }
+  
   if (isConnected) return;
 
   const alreadyReady = () => publisher.status === 'ready' && subscriber.status === 'ready';
@@ -25,21 +31,24 @@ export async function initEventBus() {
       return;
     }
 
-    // Ensure clients are connecting
-    publisher.connect();
-    subscriber.connect();
+    const waitForReady = (client: Redis) => {
+      if (client.status === 'ready') return Promise.resolve(true);
+      if (client.status === 'connecting' || client.status === 'connect') {
+        return new Promise((resolve, reject) => {
+          client.once('ready', resolve);
+          client.once('error', reject);
+        });
+      }
+      client.connect();
+      return new Promise((resolve, reject) => {
+        client.once('ready', resolve);
+        client.once('error', reject);
+      });
+    };
 
     await Promise.all([
-      new Promise((resolve, reject) => {
-        if (publisher.status === 'ready') return resolve(true);
-        publisher.once('ready', resolve);
-        publisher.once('error', reject);
-      }),
-      new Promise((resolve, reject) => {
-        if (subscriber.status === 'ready') return resolve(true);
-        subscriber.once('ready', resolve);
-        subscriber.once('error', reject);
-      })
+      waitForReady(publisher),
+      waitForReady(subscriber)
     ]);
     isConnected = true;
     console.log('✅ EventBus Redis connected (publisher + subscriber)');
@@ -53,6 +62,10 @@ export async function initEventBus() {
  * Publish a message with trace context attached
  */
 export async function publish(channel: string, message: any) {
+  if (!publisher) {
+    console.warn(`⚠️  Redis not available. Message not published to ${channel}`);
+    return;
+  }
   // Create a wrapper with trace context injected
   const messageWithContext = {
     ...message,
@@ -68,6 +81,10 @@ export async function publish(channel: string, message: any) {
  * Subscribe with automatic trace context extraction
  */
 export function subscribe(channel: string, handler: (msg: any) => void) {
+  if (!subscriber) {
+    console.warn(`⚠️  Redis not available. Cannot subscribe to ${channel}`);
+    return;
+  }
   subscriber.subscribe(channel, (err, count) => {
     if (err) {
       console.error(`❌ Failed to subscribe to ${channel}:`, err);
@@ -101,6 +118,7 @@ export function subscribe(channel: string, handler: (msg: any) => void) {
     }
   });
 }
+
 
 export default {
   publish,
