@@ -62,3 +62,42 @@ export async function getRecentTracesController(req: Request, res: Response) {
   }
 }
 
+export async function getTraceByIdController(req: Request, res: Response) {
+  try {
+    const { id } = req.params;
+    
+    const trace = await TraceModel.findOne({
+      $or: [{ traceID: id }, { id: id }]
+    }).lean() as any;
+
+    if (!trace) {
+      return res.status(404).json({ error: 'Trace not found' });
+    }
+
+    // Map to frontend-friendly shape
+    const mapped = {
+      traceID: trace.traceID || trace.id,
+      serviceName: trace.serviceName || 'api',
+      duration: Math.round((trace.durationMs || 0) * 1000), // microseconds
+      status: trace.status || 0,
+      path: trace.path,
+      method: trace.method,
+      ts: trace.ts,
+      spans: (trace.spans || []).map((span: any) => ({
+        spanID: span.spanID,
+        operation: span.operation,
+        service: span.service,
+        status: span.status,
+        startOffsetMs: span.startOffsetMs || 0,
+        durationMs: span.durationMs || 0,
+        attributes: span.attributes,
+      })),
+    };
+
+    res.json({ trace: mapped });
+  } catch (err) {
+    console.error('[TracesController] Error fetching trace by ID:', err);
+    res.status(500).json({ error: 'Failed to fetch trace', details: err });
+  }
+}
+

@@ -77,15 +77,7 @@ export default function TracesPage() {
   };
 
   const handleViewSpans = (trace: Trace) => {
-    const message = [
-      `Viewing spans for trace: ${trace.traceID}`,
-      `Service: ${trace.serviceName}`,
-      `Path: ${trace.path}`,
-      `Method: ${trace.method}`,
-      `Status: ${trace.status}`,
-      `Duration: ${(trace.duration / 1000).toFixed(2)}ms`
-    ].join('\n');
-    alert(message);
+    router.push(`/dashboard/traces/${trace.traceID}`);
   };
 
   if (!user) return null;
