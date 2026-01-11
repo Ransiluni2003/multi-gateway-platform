@@ -350,6 +350,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: [deploy-backend, deploy-frontend, integration-tests]
     if: failure() && github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/pinithi')
+    permissions:
+      contents: read
+      issues: write
     
     steps:
       - name: Checkout code
@@ -383,8 +386,10 @@ jobs:
         continue-on-error: true
 
       - name: Create rollback issue
+        continue-on-error: true
         uses: actions/github-script@v7
         with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             await github.rest.issues.create({
               owner: context.repo.owner,
