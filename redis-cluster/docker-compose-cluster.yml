@@ -1,0 +1,160 @@
+# Redis Cluster Setup for Horizontal Scaling
+# Use when single Redis instance becomes a bottleneck (>10k ops/sec)
+
+services:
+  # Redis Cluster - 6 nodes (3 masters + 3 replicas)
+  
+  redis-node-1:
+    image: redis:7-alpine
+    command: >
+      redis-server
+      --port 7001
+      --cluster-enabled yes
+      --cluster-config-file nodes.conf
+      --cluster-node-timeout 5000
+      --appendonly yes
+      --maxmemory 512mb
+      --maxmemory-policy noeviction
+    ports:
+      - "7001:7001"
+      - "17001:17001"
+    volumes:
+      - redis-cluster-data-1:/data
+    networks:
+      - redis-cluster-network
+
+  redis-node-2:
+    image: redis:7-alpine
+    command: >
+      redis-server
+      --port 7002
+      --cluster-enabled yes
+      --cluster-config-file nodes.conf
+      --cluster-node-timeout 5000
+      --appendonly yes
+      --maxmemory 512mb
+      --maxmemory-policy noeviction
+    ports:
+      - "7002:7002"
+      - "17002:17002"
+    volumes:
+      - redis-cluster-data-2:/data
+    networks:
+      - redis-cluster-network
+
+  redis-node-3:
+    image: redis:7-alpine
+    command: >
+      redis-server
+      --port 7003
+      --cluster-enabled yes
+      --cluster-config-file nodes.conf
+      --cluster-node-timeout 5000
+      --appendonly yes
+      --maxmemory 512mb
+      --maxmemory-policy noeviction
+    ports:
+      - "7003:7003"
+      - "17003:17003"
+    volumes:
+      - redis-cluster-data-3:/data
+    networks:
+      - redis-cluster-network
+
+  redis-node-4:
+    image: redis:7-alpine
+    command: >
+      redis-server
+      --port 7004
+      --cluster-enabled yes
+      --cluster-config-file nodes.conf
+      --cluster-node-timeout 5000
+      --appendonly yes
+      --maxmemory 512mb
+      --maxmemory-policy noeviction
+    ports:
+      - "7004:7004"
+      - "17004:17004"
+    volumes:
+      - redis-cluster-data-4:/data
+    networks:
+      - redis-cluster-network
+
+  redis-node-5:
+    image: redis:7-alpine
+    command: >
+      redis-server
+      --port 7005
+      --cluster-enabled yes
+      --cluster-config-file nodes.conf
+      --cluster-node-timeout 5000
+      --appendonly yes
+      --maxmemory 512mb
+      --maxmemory-policy noeviction
+    ports:
+      - "7005:7005"
+      - "17005:17005"
+    volumes:
+      - redis-cluster-data-5:/data
+    networks:
+      - redis-cluster-network
+
+  redis-node-6:
+    image: redis:7-alpine
+    command: >
+      redis-server
+      --port 7006
+      --cluster-enabled yes
+      --cluster-config-file nodes.conf
+      --cluster-node-timeout 5000
+      --appendonly yes
+      --maxmemory 512mb
+      --maxmemory-policy noeviction
+    ports:
+      - "7006:7006"
+      - "17006:17006"
+    volumes:
+      - redis-cluster-data-6:/data
+    networks:
+      - redis-cluster-network
+
+  # Cluster initialization container
+  redis-cluster-init:
+    image: redis:7-alpine
+    depends_on:
+      - redis-node-1
+      - redis-node-2
+      - redis-node-3
+      - redis-node-4
+      - redis-node-5
+      - redis-node-6
+    entrypoint: []
+    command: >
+      sh -c "
+      sleep 5;
+      redis-cli --cluster create 
+      redis-node-1:7001 
+      redis-node-2:7002 
+      redis-node-3:7003 
+      redis-node-4:7004 
+      redis-node-5:7005 
+      redis-node-6:7006 
+      --cluster-replicas 1 
+      --cluster-yes;
+      echo 'Redis cluster initialized successfully';
+      redis-cli -c -h redis-node-1 -p 7001 cluster info;
+      "
+    networks:
+      - redis-cluster-network
+
+volumes:
+  redis-cluster-data-1:
+  redis-cluster-data-2:
+  redis-cluster-data-3:
+  redis-cluster-data-4:
+  redis-cluster-data-5:
+  redis-cluster-data-6:
+
+networks:
+  redis-cluster-network:
+    driver: bridge

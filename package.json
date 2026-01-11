@@ -14,7 +14,9 @@
     "deploy:local-test": "npm run health-check && echo 'Health checks passed!'",
     "ci:setup": "echo 'Run scripts/setup-github-secrets.sh to configure GitHub Secrets'",
     "ci:validate": "gh workflow run ci-cd.yml --ref main",
-    "ci:logs": "gh run list --workflow=ci-cd.yml --limit 5"
+    "ci:logs": "gh run list --workflow=ci-cd.yml --limit 5",
+    "verify:setup": "node loadtest/verify-setup.js",
+    "demo": "node loadtest/run-demo.js"
   },
   "repository": {
     "type": "git",
@@ -36,12 +38,15 @@
     "@opentelemetry/semantic-conventions": "^1.38.0",
     "@supabase/supabase-js": "^2.89.0",
     "amqplib": "^0.10.9",
+    "axios": "^1.13.2",
+    "bullmq": "^5.66.4",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
     "ioredis": "^5.8.2",
     "mongoose": "^9.1.1",
-    "uuid": "^13.0.0"
+    "uuid": "^13.0.0",
+    "winston": "^3.19.0"
   },
   "devDependencies": {
     "@types/jest": "^30.0.0"

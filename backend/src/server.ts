@@ -34,6 +34,10 @@ import filesRoutes from "./routes/filesRoutes";
 import { initRedis, redisClient } from "./config/redisClient";
 import { getPaymentDetails } from "./services/paymentsService";
 import axiosInstance from "./utils/axiosRetryClient";
+// Queues and monitoring
+import QueueManager from "./queues/queueManager";
+import { createQueueMetricsRouter } from "./queues/metricsRouter";
+import { PaymentQueueHandler, NotificationQueueHandler, WebhookQueueHandler } from "./queues/handlers";
 
 // ==========================
 // Validate Supabase Variables
@@ -103,7 +107,7 @@ app.use(
 app.use(
   rateLimit({
     windowMs: 60 * 1000,
-    max: 100,
+    max: 10000,
     message: { message: "Too many requests. Try again later." },
   })
 );
@@ -134,6 +138,19 @@ app.use("/api/jobs", jobsRoutes);
 app.use("/api/files", filesRoutes);
 app.use("/api/traces", tracesRoutes);
 app.use("/api/fraud", fraudRoutes);
+
+// ==========================
+// Queues: init + metrics endpoints
+// ==========================
+const redisUrl = process.env.REDIS_URL || "redis://:redis-secure-password-dev@localhost:6379";
+const queueManager = new QueueManager(redisUrl, logger);
+// Register queues
+new PaymentQueueHandler(queueManager, logger);
+new NotificationQueueHandler(queueManager, logger);
+new WebhookQueueHandler(queueManager, logger);
+// Expose /queue/* endpoints
+app.use("/queue", createQueueMetricsRouter(queueManager, logger));
+
 // Minimal forwarding to payments service to support E2E test on port 5000
 app.post("/api/payments/pay", async (req: Request, res: Response, next: NextFunction) => {
   try {
