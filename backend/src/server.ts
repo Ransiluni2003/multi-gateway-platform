@@ -31,6 +31,8 @@ import errorHandler from "./middleware/errorHandler";
 import securityRoutes from "./routes/securityRoutes";
 import jobsRoutes from "./routes/jobsRoutes";
 import filesRoutes from "./routes/filesRoutes";
+import bundleRoutes from "./routes/bundleRoutes";
+import mockPaymentRoutes from "./routes/mockPaymentRoutes";
 import { initRedis, redisClient } from "./config/redisClient";
 import { getPaymentDetails } from "./services/paymentsService";
 import axiosInstance from "./utils/axiosRetryClient";
@@ -138,6 +140,8 @@ app.use("/api/jobs", jobsRoutes);
 app.use("/api/files", filesRoutes);
 app.use("/api/traces", tracesRoutes);
 app.use("/api/fraud", fraudRoutes);
+app.use("/api", bundleRoutes);
+app.use("/api", mockPaymentRoutes);
 
 // ==========================
 // Queues: init + metrics endpoints
