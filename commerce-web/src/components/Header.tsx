@@ -37,6 +37,9 @@ export default function Header({ onOpenSidebar }: { onOpenSidebar?: () => void }
           <Button color="inherit" component={Link} href="/">
             Home
           </Button>
+          <Button color="inherit" component={Link} href="/products">
+            Products
+          </Button>
           <Button color="inherit" component={Link} href="/cart">
             Cart
           </Button>
@@ -44,7 +47,7 @@ export default function Header({ onOpenSidebar }: { onOpenSidebar?: () => void }
           <Button color="inherit" component={Link} href="/orders">
             Orders
           </Button>
-          <Button color="inherit" component={Link} href="/admin">
+          <Button color="inherit" component={Link} href="/admin/products">
             Admin
           </Button>
           <ThemeToggle />
