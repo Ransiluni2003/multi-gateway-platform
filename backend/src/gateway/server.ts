@@ -14,6 +14,18 @@ const app = express();
 app.use(express.json());
 
 // ------------------------
+// Public health endpoint (no auth)
+// ------------------------
+app.get("/health", (req: Request, res: Response) => {
+  res.json({ status: "ok", service: "gateway", time: Date.now() });
+});
+
+// Public API health without auth (uses gateway process itself)
+app.get("/health/api", (req: Request, res: Response) => {
+  res.json({ status: "ok", service: "api", time: Date.now() });
+});
+
+// ------------------------
 // Rate limiting per IP
 // ------------------------
 const limiter = rateLimit({ windowMs: 60 * 1000, max: 100 });

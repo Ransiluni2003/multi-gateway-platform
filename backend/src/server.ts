@@ -2,6 +2,12 @@ import express, { Request, Response, NextFunction } from "express";
 import dotenv from "dotenv";
 import rateLimit from "express-rate-limit";
 import path from "path";
+
+// IMPORTANT: Load .env FIRST before any other imports that use it
+dotenv.config({
+  path: path.resolve(process.cwd(), ".env"),
+});
+
 import cors from "cors";
 import helmet from "helmet";
 import { v4 as uuidv4 } from "uuid";
@@ -16,11 +22,7 @@ import tracesRoutes from './routes/tracesRoutes';
 import fraudRoutes from "./routes/fraudRoutes";
 import analyticsRouter from "./routes/analytics";
 import { traceCapture } from "./middleware/traceCapture";
-
-// Load .env (ONLY from backend/.env)
-dotenv.config({
-  path: path.resolve(__dirname, "../.env"),
-});
+import { recordSpan, withSpanTracking } from "./utils/spanTracker";
 
 // Local Imports
 import connectMongo from "./config/db";
@@ -29,9 +31,15 @@ import errorHandler from "./middleware/errorHandler";
 import securityRoutes from "./routes/securityRoutes";
 import jobsRoutes from "./routes/jobsRoutes";
 import filesRoutes from "./routes/filesRoutes";
+import bundleRoutes from "./routes/bundleRoutes";
+import mockPaymentRoutes from "./routes/mockPaymentRoutes";
 import { initRedis, redisClient } from "./config/redisClient";
 import { getPaymentDetails } from "./services/paymentsService";
 import axiosInstance from "./utils/axiosRetryClient";
+// Queues and monitoring
+import QueueManager from "./queues/queueManager";
+import { createQueueMetricsRouter } from "./queues/metricsRouter";
+import { PaymentQueueHandler, NotificationQueueHandler, WebhookQueueHandler } from "./queues/handlers";
 
 // ==========================
 // Validate Supabase Variables
@@ -80,12 +88,19 @@ if (logtailToken) {
 const app = express();
 // Health endpoint for load testing (must be after app is declared)
 app.use(express.json());
+
+// Initialize request start time for span tracking
+app.use((req: Request, res: Response, next: NextFunction) => {
+  (req as any).startTime = Date.now();
+  next();
+});
+
 // Capture lightweight traces for the admin trace viewer
 app.use(traceCapture);
 app.use(helmet());
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN || "http://localhost:3000",
+    origin: ["http://localhost:3000", "http://localhost:3001"],
     credentials: true,
   })
 );
@@ -94,7 +109,7 @@ app.use(
 app.use(
   rateLimit({
     windowMs: 60 * 1000,
-    max: 100,
+    max: 10000,
     message: { message: "Too many requests. Try again later." },
   })
 );
@@ -125,6 +140,44 @@ app.use("/api/jobs", jobsRoutes);
 app.use("/api/files", filesRoutes);
 app.use("/api/traces", tracesRoutes);
 app.use("/api/fraud", fraudRoutes);
+app.use("/api", bundleRoutes);
+app.use("/api", mockPaymentRoutes);
+
+// ==========================
+// Queues: init + metrics endpoints
+// ==========================
+const redisUrl = process.env.REDIS_URL || "redis://:redis-secure-password-dev@localhost:6379";
+const queueManager = new QueueManager(redisUrl, logger);
+// Register queues
+new PaymentQueueHandler(queueManager, logger);
+new NotificationQueueHandler(queueManager, logger);
+new WebhookQueueHandler(queueManager, logger);
+// Expose /queue/* endpoints
+app.use("/queue", createQueueMetricsRouter(queueManager, logger));
+
+// Minimal forwarding to payments service to support E2E test on port 5000
+app.post("/api/payments/pay", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const start = Date.now();
+    const resp = await axiosInstance.post("http://localhost:4001/api/payments/pay", req.body, {
+      headers: {
+        // Forward trace header if present; ensure one is always set
+        "x-trace-id": (req as any).traceId || req.headers["x-trace-id"] || "unknown",
+      },
+      timeout: 10000,
+    });
+
+    // Record a span representing the external service call
+    recordSpan(req as any, "Call payments service", "payments", Date.now() - start, resp.status);
+
+    // Preserve the trace id header on the response
+    res.setHeader("X-Trace-ID", (req as any).traceId || "unknown");
+    res.status(resp.status).json(resp.data);
+  } catch (err: any) {
+    recordSpan(req as any, "Payments call failed", "payments", 1, 500);
+    next(err);
+  }
+});
 app.use("/api/analytics", analyticsRouter);
 
 // ==========================
@@ -312,6 +365,7 @@ app.use(errorHandler);
   const server = app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
     logger.info(`Server started on port ${PORT}`);
+    console.log("   📌 For full functionality, use: docker compose up -d");
   });
 
   process.on("SIGTERM", async () => {
