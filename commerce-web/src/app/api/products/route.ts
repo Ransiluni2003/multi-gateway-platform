@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Parse images for all products
-    const productsWithImages = products.map((p) => ({
+    const productsWithImages = products.map((p: any) => ({
       ...p,
       images: p.images ? JSON.parse(p.images) : [],
     }));

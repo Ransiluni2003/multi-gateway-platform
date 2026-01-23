@@ -20,6 +20,111 @@ model Product {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  // Relations
+  orderItems  OrderItem[]
+
   @@index([status])
   @@index([createdAt])
+}
+
+model Order {
+  id                String   @id @default(cuid())
+  email             String
+  total             Float
+  status            String   @default("pending") // "pending", "completed", "failed", "refunded"
+  
+  // Stripe
+  stripePaymentIntentId String? @unique
+  stripeTransactionId   String?
+  
+  // Customer info
+  firstName         String
+  lastName          String
+  address           String
+  city              String
+  state             String
+  zipCode           String
+  country           String
+  
+  // Items
+  items             OrderItem[]
+  
+  // Payment
+  payment           Payment?
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([status])
+  @@index([stripePaymentIntentId])
+  @@index([email])
+  @@index([createdAt])
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  quantity  Int
+  price     Float   // Price at time of purchase
+  
+  orderId   String
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+  
+  createdAt DateTime @default(now())
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+model Payment {
+  id                    String   @id @default(cuid())
+  
+  orderId               String   @unique
+  order                 Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  
+  // Stripe info
+  stripePaymentIntentId String   @unique
+  stripeChargeId        String?
+  stripeCustomerId      String?
+  
+  amount                Float
+  currency              String   @default("usd")
+  status                String   @default("pending") // "pending", "succeeded", "failed", "refunded"
+  
+  // Webhook tracking
+  lastWebhookEvent      String?
+  lastWebhookTime       DateTime?
+  
+  // Refund info
+  refundAmount          Float    @default(0)
+  refundReason          String?
+  refundedAt            DateTime?
+  
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([stripePaymentIntentId])
+  @@index([status])
+  @@index([createdAt])
+}
+model WebhookEvent {
+  id                String   @id @default(cuid())
+  stripeEventId     String   @unique // Stripe's unique event ID
+  eventType         String   // e.g., "payment_intent.succeeded"
+  status            String   @default("processed") // "processed", "failed"
+  
+  // Payload info
+  payload           String? // Raw event data
+  
+  // Processing info
+  processedAt       DateTime @default(now())
+  errorMessage      String?
+  
+  createdAt         DateTime @default(now())
+
+  @@index([stripeEventId])
+  @@index([eventType])
+  @@index([processedAt])
 }

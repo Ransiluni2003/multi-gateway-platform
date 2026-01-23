@@ -1,13 +1,13 @@
-import Container from "@mui/material/Container";
-import Typography from "@mui/material/Typography";
+'use client';
+
+import React, { Suspense } from 'react';
+import CheckoutContent from './checkout-content';
 
 export default function CheckoutPage() {
   return (
-    <Container sx={{ py: 4 }}>
-      <Typography variant="h4" gutterBottom>
-        Checkout
-      </Typography>
-      <Typography>Checkout flow will be implemented here.</Typography>
-    </Container>
+    <Suspense fallback={<div>Loading...</div>}>
+      <CheckoutContent />
+    </Suspense>
   );
 }
+

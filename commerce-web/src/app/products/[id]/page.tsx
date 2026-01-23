@@ -6,14 +6,13 @@ import {
   Container,
   Grid,
   Typography,
-  Button,
   Box,
   Card,
   CardMedia,
   Chip,
   CircularProgress,
 } from '@mui/material';
-import AddShoppingCartIcon from '@mui/icons-material/AddShoppingCart';
+import AddToCart from '@/components/AddToCart';
 
 interface Product {
   id: string;
@@ -61,15 +60,6 @@ export default function ProductDetailPage() {
       </Container>
     );
   }
-
-  const handleAddToCart = () => {
-    fetch('/api/cart', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ productId: product.id, quantity: 1 }),
-    });
-    alert('Added to cart!');
-  };
 
   return (
     <Container sx={{ py: 4 }}>
@@ -129,23 +119,20 @@ export default function ProductDetailPage() {
           </Box>
 
           <Typography variant="h5" color="primary" gutterBottom>
-            ${product.price.toFixed(2)}
+            ${(product.price / 100).toFixed(2)}
           </Typography>
 
           <Typography variant="body1" paragraph sx={{ mt: 3 }}>
             {product.description}
           </Typography>
 
-          <Button
+          <AddToCart
+            productId={product.id}
+            maxStock={product.stock}
             variant="contained"
             size="large"
-            startIcon={<AddShoppingCartIcon />}
-            onClick={handleAddToCart}
-            disabled={product.status !== 'active' || product.stock <= 0}
-            sx={{ mt: 2 }}
-          >
-            Add to Cart
-          </Button>
+            fullWidth
+          />
         </Grid>
       </Grid>
     </Container>

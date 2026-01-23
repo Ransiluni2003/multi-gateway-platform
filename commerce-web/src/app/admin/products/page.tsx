@@ -24,6 +24,8 @@ import {
   MenuItem,
   Chip,
   Box,
+  Alert,
+  CircularProgress,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -41,8 +43,15 @@ interface Product {
 
 export default function AdminProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [filters, setFilters] = useState({
+    status: '',
+    search: '',
+  });
   const [formData, setFormData] = useState({
     name: '',
     price: '',
@@ -56,11 +65,47 @@ export default function AdminProductsPage() {
     fetchProducts();
   }, []);
 
-  const fetchProducts = () => {
-    fetch('/api/products')
-      .then((res) => res.json())
-      .then((data) => setProducts(data.products || []))
-      .catch((err) => console.error(err));
+  // Apply filters whenever products or filters change
+  useEffect(() => {
+    let results = products;
+    
+    if (filters.status) {
+      results = results.filter(p => p.status === filters.status);
+    }
+    
+    if (filters.search) {
+      const searchLower = filters.search.toLowerCase();
+      results = results.filter(p => 
+        p.name.toLowerCase().includes(searchLower) ||
+        p.description.toLowerCase().includes(searchLower)
+      );
+    }
+    
+    setFilteredProducts(results);
+  }, [products, filters]);
+
+  const fetchProducts = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/products');
+      const data = await res.json();
+      
+      if (res.ok) {
+        const productsWithImages = (data.products || []).map((p: any) => ({
+          ...p,
+          images: Array.isArray(p.images) ? p.images : (typeof p.images === 'string' ? JSON.parse(p.images) : []),
+        }));
+        setProducts(productsWithImages);
+      } else {
+        setError(data.error || 'Failed to load products');
+      }
+    } catch (err) {
+      setError('Error loading products');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleOpen = (product?: Product) => {
@@ -70,7 +115,7 @@ export default function AdminProductsPage() {
         name: product.name,
         price: product.price.toString(),
         description: product.description,
-        images: product.images.join(', '),
+        images: Array.isArray(product.images) ? product.images.join(', ') : '',
         stock: product.stock.toString(),
         status: product.status,
       });
@@ -94,6 +139,16 @@ export default function AdminProductsPage() {
   };
 
   const handleSubmit = async () => {
+    // Validate required fields
+    if (!formData.name.trim()) {
+      alert('Product name is required');
+      return;
+    }
+    if (!formData.price.trim()) {
+      alert('Price is required');
+      return;
+    }
+
     const imagesArray = formData.images
       .split(',')
       .map((s) => s.trim())
@@ -118,11 +173,13 @@ export default function AdminProductsPage() {
         body: JSON.stringify(payload),
       });
 
+      const data = await res.json();
+
       if (res.ok) {
         fetchProducts();
         handleClose();
       } else {
-        alert('Failed to save product');
+        alert(data.error || 'Failed to save product');
       }
     } catch (error) {
       console.error(error);
@@ -155,45 +212,101 @@ export default function AdminProductsPage() {
         </Button>
       </Box>
 
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Name</TableCell>
-              <TableCell>Price</TableCell>
-              <TableCell>Stock</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell>Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {products.map((product) => (
-              <TableRow key={product.id}>
-                <TableCell>{product.name}</TableCell>
-                <TableCell>${product.price.toFixed(2)}</TableCell>
-                <TableCell>{product.stock}</TableCell>
-                <TableCell>
-                  <Chip
-                    label={product.status}
-                    color={product.status === 'active' ? 'success' : 'default'}
-                    size="small"
-                  />
-                </TableCell>
-                <TableCell>
-                  <IconButton size="small" color="primary" onClick={() => handleOpen(product)}>
-                    <EditIcon />
-                  </IconButton>
-                  <IconButton size="small" color="error" onClick={() => handleDelete(product.id)}>
-                    <DeleteIcon />
-                  </IconButton>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+          {error}
+        </Alert>
+      )}
 
-      {products.length === 0 && (
+      {/* Filters */}
+      <Paper sx={{ p: 2, mb: 3 }}>
+        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'end' }}>
+          <TextField
+            label="Search"
+            size="small"
+            placeholder="Search by name or description..."
+            value={filters.search}
+            onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+            sx={{ minWidth: 250 }}
+          />
+          <FormControl size="small" sx={{ minWidth: 150 }}>
+            <InputLabel>Status</InputLabel>
+            <Select
+              value={filters.status}
+              label="Status"
+              onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+            >
+              <MenuItem value="">All</MenuItem>
+              <MenuItem value="active">Active</MenuItem>
+              <MenuItem value="inactive">Inactive</MenuItem>
+            </Select>
+          </FormControl>
+          <Typography variant="body2" color="text.secondary">
+            Showing {filteredProducts.length} of {products.length} products
+          </Typography>
+        </Box>
+      </Paper>
+
+      {loading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+          <CircularProgress />
+        </Box>
+      ) : (
+        <TableContainer component={Paper}>
+          <Table>
+            <TableHead>
+              <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
+                <TableCell sx={{ fontWeight: 'bold' }}>Name</TableCell>
+                <TableCell sx={{ fontWeight: 'bold' }}>Price</TableCell>
+                <TableCell sx={{ fontWeight: 'bold' }}>Stock</TableCell>
+                <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
+                <TableCell sx={{ fontWeight: 'bold' }}>Actions</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {filteredProducts.map((product) => (
+                <TableRow key={product.id} hover>
+                  <TableCell>{product.name}</TableCell>
+                  <TableCell>${product.price.toFixed(2)}</TableCell>
+                  <TableCell>
+                    <Chip 
+                      label={product.stock} 
+                      variant="outlined"
+                      color={product.stock > 0 ? 'success' : 'error'}
+                      size="small"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Chip
+                      label={product.status}
+                      color={product.status === 'active' ? 'success' : 'default'}
+                      size="small"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <IconButton size="small" color="primary" onClick={() => handleOpen(product)} title="Edit">
+                      <EditIcon />
+                    </IconButton>
+                    <IconButton size="small" color="error" onClick={() => handleDelete(product.id)} title="Delete">
+                      <DeleteIcon />
+                    </IconButton>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
+
+      {!loading && filteredProducts.length === 0 && products.length > 0 && (
+        <Box sx={{ textAlign: 'center', py: 8 }}>
+          <Typography variant="h6" color="text.secondary">
+            No products match your filters.
+          </Typography>
+        </Box>
+      )}
+
+      {!loading && filteredProducts.length === 0 && products.length === 0 && (
         <Box sx={{ textAlign: 'center', py: 8 }}>
           <Typography variant="h6" color="text.secondary">
             No products yet. Click "Add Product" to create one.
@@ -201,8 +314,9 @@ export default function AdminProductsPage() {
         </Box>
       )}
 
+      {/* Add/Edit Dialog */}
       <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
-        <DialogTitle>{editing ? 'Edit Product' : 'Add Product'}</DialogTitle>
+        <DialogTitle>{editing ? 'Edit Product' : 'Add New Product'}</DialogTitle>
         <DialogContent>
           <TextField
             label="Name"
@@ -211,12 +325,14 @@ export default function AdminProductsPage() {
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             required
+            autoFocus
           />
           <TextField
             label="Price"
             fullWidth
             margin="normal"
             type="number"
+            inputProps={{ step: '0.01', min: '0' }}
             value={formData.price}
             onChange={(e) => setFormData({ ...formData, price: e.target.value })}
             required
@@ -243,6 +359,7 @@ export default function AdminProductsPage() {
             fullWidth
             margin="normal"
             type="number"
+            inputProps={{ min: '0' }}
             value={formData.stock}
             onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
           />
@@ -260,8 +377,8 @@ export default function AdminProductsPage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={handleClose}>Cancel</Button>
-          <Button onClick={handleSubmit} variant="contained">
-            {editing ? 'Update' : 'Create'}
+          <Button onClick={handleSubmit} variant="contained" color="primary">
+            {editing ? 'Update Product' : 'Create Product'}
           </Button>
         </DialogActions>
       </Dialog>

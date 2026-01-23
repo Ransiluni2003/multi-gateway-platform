@@ -10,8 +10,20 @@ import IconButton from "@mui/material/IconButton";
 import MenuIcon from "@mui/icons-material/Menu";
 import ThemeToggle from "./ThemeToggle";
 import MiniCart from "./MiniCart";
+import { useAuth } from "./AuthProvider";
 
 export default function Header({ onOpenSidebar }: { onOpenSidebar?: () => void }) {
+  const { user, loading, logout } = useAuth();
+  const isAdmin = user?.role === "admin";
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (error) {
+      console.error("Logout failed", error);
+    }
+  };
+
   return (
     <AppBar position="sticky">
       <Toolbar>
@@ -47,9 +59,26 @@ export default function Header({ onOpenSidebar }: { onOpenSidebar?: () => void }
           <Button color="inherit" component={Link} href="/orders">
             Orders
           </Button>
-          <Button color="inherit" component={Link} href="/admin/products">
-            Admin
-          </Button>
+          {isAdmin ? (
+            <Button color="inherit" component={Link} href="/admin">
+              Admin
+            </Button>
+          ) : null}
+
+          {!loading && user ? (
+            <>
+              <Typography variant="body2" sx={{ color: "inherit", opacity: 0.8 }}>
+                {user.email} ({user.role})
+              </Typography>
+              <Button color="inherit" onClick={handleLogout}>
+                Logout
+              </Button>
+            </>
+          ) : (
+            <Button color="inherit" component={Link} href="/login">
+              Login
+            </Button>
+          )}
           <ThemeToggle />
         </Box>
       </Toolbar>

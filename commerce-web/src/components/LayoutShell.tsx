@@ -7,6 +7,7 @@ import { useTheme } from "@mui/material/styles";
 import Header from "./Header";
 import Sidebar from "./Sidebar";
 import Footer from "./Footer";
+import { AuthProvider } from "./AuthProvider";
 
 export default function LayoutShell({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
@@ -17,16 +18,18 @@ export default function LayoutShell({ children }: { children: React.ReactNode })
   const handleClose = () => setOpen(false);
 
   return (
-    <Box className="min-h-screen flex">
-      <Sidebar open={mdUp ? true : open} variant={mdUp ? "permanent" : "temporary"} onClose={handleClose} />
+    <AuthProvider>
+      <Box className="min-h-screen flex">
+        <Sidebar open={mdUp ? true : open} variant={mdUp ? "permanent" : "temporary"} onClose={handleClose} />
 
-      <Box sx={{ flex: 1, display: "flex", flexDirection: "column" }}>
-        <Header onOpenSidebar={handleOpen} />
-        <Box component="main" sx={{ flex: 1 }}>
-          {children}
+        <Box sx={{ flex: 1, display: "flex", flexDirection: "column" }}>
+          <Header onOpenSidebar={handleOpen} />
+          <Box component="main" sx={{ flex: 1 }}>
+            {children}
+          </Box>
+          <Footer />
         </Box>
-        <Footer />
       </Box>
-    </Box>
+    </AuthProvider>
   );
 }
