@@ -23,7 +23,7 @@ function log(message, color = 'reset') {
 }
 
 async function sendWebhook(orderId, eventType, eventId, chargeId = null) {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3001';
   
   let payload;
   

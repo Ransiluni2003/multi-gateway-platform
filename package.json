@@ -16,7 +16,20 @@
     "ci:validate": "gh workflow run ci-cd.yml --ref main",
     "ci:logs": "gh run list --workflow=ci-cd.yml --limit 5",
     "verify:setup": "node loadtest/verify-setup.js",
-    "demo": "node loadtest/run-demo.js"
+    "demo": "node loadtest/run-demo.js",
+    "docker:up": "docker-compose up --build -d",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f",
+    "docker:restart": "docker-compose down && docker-compose up --build -d",
+    "docker:clean": "docker-compose down -v",
+    "dev:docker": "docker-compose up --build",
+    "db:migrate": "cd commerce-web && npx prisma migrate dev",
+    "db:migrate:deploy": "cd commerce-web && npx prisma migrate deploy",
+    "db:seed": "cd commerce-web && npm run seed",
+    "db:reset": "cd commerce-web && npx prisma migrate reset --force && npm run seed",
+    "test:e2e": "cd commerce-web && npm run test:e2e",
+    "test:webhooks": "cd commerce-web && npm run test:webhooks",
+    "verify:docker": "node scripts/verify-docker-startup.js"
   },
   "repository": {
     "type": "git",

@@ -24,12 +24,16 @@ import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import LockIcon from '@mui/icons-material/Lock';
 import { useCart } from '@/context/CartContext';
+import { CouponApplier } from '@/components/CouponApplier';
 
 export default function CheckoutContent() {
   const { cart, products, total, itemCount, loading: cartLoading, clearCart } = useCart();
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
+  const [discountAmount, setDiscountAmount] = useState(0);
+  const [finalTotal, setFinalTotal] = useState(total);
   
   const [formData, setFormData] = useState({
     email: '',
@@ -45,7 +49,8 @@ export default function CheckoutContent() {
   // Validate cart on mount and whenever it changes
   useEffect(() => {
     validateCart();
-  }, [cart, products]);
+    setFinalTotal(total - (discountAmount * 100));
+  }, [cart, products, discountAmount]);
 
   const validateCart = () => {
     const errors: string[] = [];
@@ -92,6 +97,16 @@ export default function CheckoutContent() {
     );
   };
 
+  const handleCouponApplied = (couponData: any) => {
+    setAppliedCoupon(couponData);
+    setDiscountAmount(couponData.discountAmount);
+  };
+
+  const handleCouponRemoved = () => {
+    setAppliedCoupon(null);
+    setDiscountAmount(0);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -122,6 +137,8 @@ export default function CheckoutContent() {
         body: JSON.stringify({
           ...formData,
           items: orderItems,
+          couponCode: appliedCoupon?.code || null,
+          discountAmount: discountAmount,
         }),
       });
 
@@ -334,6 +351,30 @@ export default function CheckoutContent() {
                   </Typography>
                 </Box>
 
+                {/* Coupon Section */}
+                <CouponApplier
+                  subtotal={total / 100}
+                  onCouponApplied={(coupon) => {
+                    setAppliedCoupon(coupon);
+                    setDiscountAmount(coupon.discountAmount);
+                  }}
+                  onCouponRemoved={() => {
+                    setAppliedCoupon(null);
+                    setDiscountAmount(0);
+                  }}
+                />
+
+                {discountAmount > 0 && (
+                  <Box display="flex" justifyContent="space-between" mb={2} sx={{ color: '#d32f2f', fontWeight: 'bold' }}>
+                    <Typography variant="body2">
+                      Discount ({appliedCoupon?.code})
+                    </Typography>
+                    <Typography variant="body2">
+                      -${discountAmount.toFixed(2)}
+                    </Typography>
+                  </Box>
+                )}
+
                 <Box display="flex" justifyContent="space-between" mb={2}>
                   <Typography variant="body2" color="textSecondary">
                     Shipping
@@ -350,7 +391,7 @@ export default function CheckoutContent() {
                     Total
                   </Typography>
                   <Typography variant="h6" fontWeight="bold" color="primary">
-                    ${(total / 100).toFixed(2)}
+                    ${((total - discountAmount * 100) / 100).toFixed(2)}
                   </Typography>
                 </Box>
               </CardContent>

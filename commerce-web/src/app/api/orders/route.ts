@@ -14,12 +14,14 @@ interface CreateOrderInput {
     productId: string;
     quantity: number;
   }>;
+  couponCode?: string;
+  discountAmount?: number;
 }
 
 export async function POST(request: NextRequest) {
   try {
     const body: CreateOrderInput = await request.json();
-    const { email, firstName, lastName, address, city, state, zipCode, country, items } = body;
+    const { email, firstName, lastName, address, city, state, zipCode, country, items, couponCode, discountAmount } = body;
 
     // Validate required fields
     if (!email || !firstName || !lastName || !address || !city || !state || !zipCode || !country || !items || items.length === 0) {
@@ -67,6 +69,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create order with items
+    const finalTotal = total - (discountAmount || 0);
     const order = await prisma.order.create({
       data: {
         email,
@@ -77,7 +80,10 @@ export async function POST(request: NextRequest) {
         state,
         zipCode,
         country,
-        total,
+        subtotal: total,
+        total: finalTotal,
+        discountAmount: discountAmount || 0,
+        couponCode: couponCode || null,
         status: 'pending',
         items: {
           create: orderItems,
@@ -91,6 +97,14 @@ export async function POST(request: NextRequest) {
         },
       },
     });
+
+    // Increment coupon redemption count if used
+    if (couponCode) {
+      await prisma.coupon.update({
+        where: { code: couponCode.toUpperCase() },
+        data: { redemptionCount: { increment: 1 } },
+      });
+    }
 
     return NextResponse.json({
       success: true,

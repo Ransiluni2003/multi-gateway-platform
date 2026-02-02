@@ -7,7 +7,7 @@
  * Usage: npm run seed
  */
 
-const BASE_URL = 'http://localhost:3000';
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3001';
 
 const colors = {
   reset: '\x1b[0m',
@@ -230,7 +230,7 @@ async function main() {
   }
 
   if (!serverRunning) {
-    log('❌ Cannot connect to dev server at http://localhost:3000', 'red');
+    log(`❌ Cannot connect to dev server at ${BASE_URL}`, 'red');
     log('Please start the server first: npm run dev\n', 'yellow');
     process.exit(1);
   }

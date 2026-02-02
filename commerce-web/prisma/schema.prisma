@@ -31,11 +31,17 @@ model Order {
   id                String   @id @default(cuid())
   email             String
   total             Float
+  subtotal          Float
+  discountAmount    Float    @default(0)
   status            String   @default("pending") // "pending", "completed", "failed", "refunded"
   
   // Stripe
   stripePaymentIntentId String? @unique
   stripeTransactionId   String?
+  
+  // Coupon
+  couponCode        String?
+  coupon            Coupon?  @relation(fields: [couponCode], references: [code])
   
   // Customer info
   firstName         String
@@ -58,6 +64,7 @@ model Order {
   @@index([status])
   @@index([stripePaymentIntentId])
   @@index([email])
+  @@index([couponCode])
   @@index([createdAt])
 }
 
@@ -127,4 +134,57 @@ model WebhookEvent {
   @@index([stripeEventId])
   @@index([eventType])
   @@index([processedAt])
+}
+
+model Coupon {
+  code              String   @id // Unique promo code: "SAVE10", "SUMMER20"
+  type              String   // "percent" or "amount"
+  value             Float    // e.g., 10 for 10% OR 15 for $15 off
+  
+  // Availability
+  expiresAt         DateTime?
+  maxRedemptions    Int?     // null = unlimited
+  redemptionCount   Int      @default(0) // Current redemptions
+  isActive          Boolean  @default(true)
+  
+  // Relations
+  orders            Order[]
+  
+  // Metadata
+  description       String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([isActive])
+  @@index([expiresAt])
+}
+
+model AuditLog {
+  id            String   @id @default(cuid())
+  
+  // Actor (who did it)
+  actorId       String?  // User ID (null if system action)
+  actorEmail    String?  // User email for easy reference
+  actorRole     String?  // "admin", "user", "system"
+  
+  // Action (what happened)
+  action        String   // "LOGIN_SUCCESS", "CREATE_PRODUCT", "REFUND_ORDER", etc.
+  resource      String?  // "product", "order", "coupon", "user"
+  resourceId    String?  // ID of affected resource
+  
+  // Details
+  metadata      String?  // JSON string with additional context
+  ipAddress     String?  // Client IP address
+  userAgent     String?  // Browser/client info
+  
+  // Result
+  status        String   @default("success") // "success", "failure"
+  errorMessage  String?  // If action failed
+  
+  createdAt     DateTime @default(now())
+
+  @@index([actorId])
+  @@index([action])
+  @@index([createdAt])
+  @@index([resource, resourceId])
 }

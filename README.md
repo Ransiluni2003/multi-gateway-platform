@@ -54,7 +54,47 @@ Three phases successfully completed:
 - **Docker & Docker Compose** installed
 - **Node.js 18+** installed
 - **Git** configured
-- Supabase account (for file storage)
+- Supabase account (for file storage - optional for basic setup)
+
+### Option A: Docker Quick Start (Recommended) 🐳
+
+**3 commands to get everything running:**
+
+```bash
+# 1. Clone repository
+git clone https://github.com/Ransiluni2003/multi-gateway-platform.git
+cd multi-gateway-platform
+
+# 2. Setup environment
+cp .env.example .env
+# Edit .env with your Stripe keys (see below)
+
+# 3. Start everything with one command
+npm run dev:docker
+```
+
+**Open http://localhost:3001** - You'll see 6 demo products ready to purchase! 🎉
+
+**Required Configuration (Edit `.env`):**
+```env
+# Get these from https://dashboard.stripe.com/test/apikeys
+STRIPE_SECRET_KEY=sk_test_your_key_here
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_your_key_here
+STRIPE_WEBHOOK_SECRET=whsec_your_webhook_secret_here
+```
+
+**What starts automatically:**
+- ✅ Commerce Web (Next.js) on port 3001
+- ✅ SQLite database with demo products seeded
+- ✅ Backend API services (Gateway, Payments, Workers)
+- ✅ Redis cache & MongoDB
+- ✅ Prometheus monitoring
+
+**📖 Detailed Docker Guide:** [docs/DOCKER_AND_ORCHESTRATION_GUIDE.md](docs/DOCKER_AND_ORCHESTRATION_GUIDE.md)
+
+---
+
+### Option B: Manual Setup (Advanced)
 
 ### Steps
 
@@ -167,7 +207,187 @@ docker-compose down
 
 ---
 
-## 📖 Usage Guide
+## � How to Run Locally with Docker
+
+### One-Command Startup
+
+```bash
+# Start everything (builds images, creates DB, seeds data)
+npm run dev:docker
+
+# Or run in background
+npm run docker:up
+```
+
+**That's it!** The system automatically:
+1. ✅ Builds all Docker images
+2. ✅ Creates and migrates database
+3. ✅ Seeds 6 demo products
+4. ✅ Starts all services with health checks
+
+### Available Services
+
+| Service | URL | Purpose |
+|---------|-----|---------|
+| **Commerce Web** | http://localhost:3001 | E-commerce frontend (Next.js) |
+| **API Gateway** | http://localhost:5002 | Backend API gateway |
+| **Payments Service** | http://localhost:5003 | Payment processing |
+| **Mock Gateway** | http://localhost:5000 | Payment gateway simulator |
+| **Prometheus** | http://localhost:9090 | Metrics & monitoring |
+| **Grafana** | http://localhost:3300 | Dashboards |
+| **MongoDB** | localhost:27017 | Primary database |
+| **Redis** | localhost:6379 | Cache & queue |
+
+### Useful Docker Commands
+
+```bash
+# === MANAGEMENT ===
+npm run docker:up          # Start all services (background)
+npm run docker:down        # Stop all services
+npm run docker:restart     # Restart everything
+npm run docker:logs        # View all logs
+npm run docker:clean       # Remove all data (fresh start)
+
+# === DATABASE ===
+npm run db:migrate         # Run database migrations
+npm run db:seed            # Seed demo products & orders
+npm run db:reset           # Reset DB and reseed
+
+# === TESTING ===
+npm run test:e2e           # Run Playwright E2E tests
+npm run test:webhooks      # Test Stripe webhooks
+```
+
+### Seeding Demo Data
+
+The database is automatically seeded on first startup with:
+
+**6 Demo Products:**
+- Premium Laptop ($1,299.99)
+- Wireless Headphones ($299.99)
+- USB-C Hub ($49.99)
+- Monitor Stand ($79.99)
+- Mechanical Keyboard ($199.99)
+- Laptop Stand ($59.99)
+
+**To manually seed:**
+```bash
+npm run db:seed
+```
+
+### Running Tests
+
+**E2E Tests (Playwright):**
+```bash
+# Full test suite
+cd commerce-web
+npm run test:e2e
+
+# With UI mode
+npm run test:e2e:ui
+
+# Specific test file
+npx playwright test tests/e2e/checkout-order-admin.spec.ts
+```
+
+**Tests cover:**
+- ✅ Complete checkout flow
+- ✅ Order creation and management
+- ✅ Payment processing (Stripe)
+- ✅ Admin order operations
+- ✅ Refund processing
+- ✅ Error handling
+
+**Webhook Tests:**
+```bash
+cd commerce-web
+npm run test:webhooks
+```
+
+Tests idempotency, signature verification, and payment intent handling.
+
+### Accessing Running Containers
+
+```bash
+# Shell into commerce-web
+docker-compose exec commerce-web sh
+
+# Shell into MongoDB
+docker-compose exec mongo mongosh -u admin -p mongo-secure-password-dev
+
+# Shell into Redis
+docker-compose exec redis redis-cli -a redis-secure-password-dev
+
+# View container logs
+docker-compose logs -f commerce-web
+docker-compose logs -f api
+docker-compose logs -f payments
+```
+
+### Data Persistence
+
+All data persists across container restarts via Docker volumes:
+
+```bash
+# List volumes
+docker volume ls | grep multi-gateway
+
+# Volumes created:
+# - commerce-db       (SQLite database)
+# - mongo-data        (MongoDB data)
+# - redis-data        (Cache/queue data)
+# - prometheus-data   (Metrics)
+```
+
+**To reset all data:**
+```bash
+npm run docker:clean  # Removes volumes and containers
+```
+
+### Troubleshooting
+
+**Port conflicts:**
+```bash
+# Change ports in .env file
+COMMERCE_WEB_PORT=3002
+API_PORT=5004
+```
+
+**Database issues:**
+```bash
+# Reset and reseed
+npm run db:reset
+
+# Or manually
+docker-compose exec commerce-web npx prisma migrate reset --force
+docker-compose exec commerce-web npm run seed
+```
+
+**Build failures:**
+```bash
+# Clean rebuild
+docker-compose down
+docker system prune -a
+npm run docker:up
+```
+
+**View health status:**
+```bash
+# Check all services
+docker-compose ps
+
+# Check specific service
+curl http://localhost:3001/api/health
+```
+
+### 📖 Detailed Documentation
+
+- **Complete Docker Guide:** [docs/DOCKER_SETUP.md](docs/DOCKER_SETUP.md)
+- **Docker Notes (Learning):** [docs/docker-notes.md](docs/docker-notes.md)
+
+---
+
+## �📖 Usage Guide
 
 ### Dashboard
 - **URL**: `http://localhost:3000/dashboard`

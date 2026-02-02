@@ -18,7 +18,9 @@
     "test:webhooks": "node scripts/test-all-webhooks.js",
     "demo:webhooks": "node test-webhook-idempotency.js",
     "demo:idempotency": "node demo-webhook-idempotency.js",
-    "verify": "node scripts/verify-system.js"
+    "verify": "node scripts/verify-system.js",
+    "validate:headers": "node validate-security-headers.js http://localhost:3000",
+    "validate:headers:prod": "node validate-security-headers.js"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
