@@ -48,7 +48,7 @@ jobs:
         run: npm ci
 
       - name: Install frontend dependencies
-        working-directory: ./frontend
+        working-directory: ./commerce-web
         run: npm ci
 
       - name: Lint backend
@@ -61,7 +61,7 @@ jobs:
         run: npm run build
 
       - name: Build frontend
-        working-directory: ./frontend
+        working-directory: ./commerce-web
         run: npm run build
         env:
           NODE_ENV: production
@@ -72,7 +72,7 @@ jobs:
         continue-on-error: true
 
       - name: Run frontend tests
-        working-directory: ./frontend
+        working-directory: ./commerce-web
         run: npm test
         continue-on-error: true
 
@@ -86,7 +86,7 @@ jobs:
 
       - name: Package frontend artifact
         run: |
-          cd frontend
+          cd commerce-web
           mkdir -p ../artifacts
           tar -czf ../artifacts/frontend-${{ steps.version.outputs.frontend }}.tar.gz \
             .next/ package.json package-lock.json public/
@@ -104,7 +104,7 @@ jobs:
         with:
           path: |
             backend/dist
-            frontend/.next
+            commerce-web/.next
           key: build-${{ github.sha }}
 
   # Job 2: Deploy Backend to Railway
@@ -240,14 +240,14 @@ jobs:
       - name: Restore build cache
         uses: actions/cache@v4
         with:
-          path: frontend/.next
+          path: commerce-web/.next
           key: build-${{ github.sha }}
 
       - name: Install Vercel CLI
         run: npm install -g vercel
 
       - name: Pull Vercel environment
-        working-directory: ./frontend
+        working-directory: ./commerce-web
         run: |
           vercel pull --yes --environment=production \
             --token ${{ secrets.VERCEL_TOKEN }} \
@@ -255,7 +255,7 @@ jobs:
 
       - name: Deploy to Vercel
         id: deploy
-        working-directory: ./frontend
+        working-directory: ./commerce-web
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           NEXT_PUBLIC_API_URL: ${{ needs.deploy-backend.outputs.deployment-url }}
@@ -320,7 +320,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: vercel-deployment-logs
-          path: frontend/vercel_*.log
+          path: commerce-web/vercel_*.log
           retention-days: 30
 
   # Job 4: Integration Tests Post-Deployment
@@ -409,7 +409,7 @@ jobs:
           vercel ls --token "${VERCEL_TOKEN}" 2>&1 | tee vercel_list.log || true
           
           echo "⚠️ Manual rollback may be required - check Vercel dashboard"
-        working-directory: ./frontend
+        working-directory: ./commerce-web
         continue-on-error: true
 
       - name: Create rollback issue

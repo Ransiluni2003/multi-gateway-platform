@@ -35,13 +35,17 @@ jobs:
         working-directory: ./backend
         run: npm ci
 
+      - name: Install frontend dependencies
+        working-directory: ./commerce-web
+        run: npm ci
+
       - name: Lint backend
         working-directory: ./backend
         run: npm run lint
         continue-on-error: true
 
       - name: Type check frontend
-        working-directory: ./frontend
+        working-directory: ./commerce-web
         run: npx tsc --noEmit
         continue-on-error: true
 
@@ -242,7 +246,7 @@ jobs:
         run: npm ci
 
       - name: Install frontend dependencies
-        working-directory: ./frontend
+        working-directory: ./commerce-web
         run: npm ci
 
       - name: Build backend
@@ -250,7 +254,7 @@ jobs:
         run: npm run build
 
       - name: Build frontend
-        working-directory: ./frontend
+        working-directory: ./commerce-web
         run: npm run build
         env:
           NODE_ENV: production
@@ -266,7 +270,7 @@ jobs:
           cd ..
           
           # Frontend artifact
-          cd frontend
+          cd commerce-web
           tar -czf ../artifacts/frontend-${{ steps.version.outputs.version }}.tar.gz \
             .next/ package.json package-lock.json public/
           cd ..

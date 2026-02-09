@@ -59,7 +59,7 @@ jobs:
         run: |
           npm install
           cd backend && npm ci
-          cd ../frontend && npm ci
+          cd ../commerce-web && npm ci
 
       - name: Lint backend
         working-directory: ./backend
@@ -71,7 +71,7 @@ jobs:
         run: npm run build
 
       - name: Build frontend
-        working-directory: ./frontend
+        working-directory: ./commerce-web
         run: npm run build
         env:
           NODE_ENV: production
@@ -82,7 +82,7 @@ jobs:
         continue-on-error: true
 
       - name: Run frontend tests
-        working-directory: ./frontend
+        working-directory: ./commerce-web
         run: npm test
         continue-on-error: true
 
@@ -110,7 +110,7 @@ jobs:
 
       - name: Package frontend artifact
         run: |
-          cd frontend
+          cd commerce-web
           mkdir -p ../artifacts
           
           # Create versioned artifact
@@ -195,15 +195,12 @@ jobs:
         run: |
           wget -q https://github.com/grafana/k6/releases/download/v0.48.0/k6-v0.48.0-linux-amd64.tar.gz
           tar -xzf k6-v0.48.0-linux-amd64.tar.gz
-          sudo mv k6-v0.48.0-linux-amd64/k6 /usr/local/bin/
           k6 version
 
       - name: Run k6 load test with SLO thresholds
         run: |
           echo "🚀 Running k6 load test with SLO validation..."
           k6 run loadtest/k6-slo-test.js \
-            --env BASE_URL=http://localhost:5000 \
-            --out json=loadtest/k6-results.json \
             || echo "⚠️ Load test failed SLO thresholds"
         continue-on-error: true
 
@@ -211,9 +208,6 @@ jobs:
         run: |
           # Capture Redis info
           docker exec $(docker ps -qf "name=redis") redis-cli INFO > loadtest/redis-after.txt || true
-          
-          # Capture latency events
-          docker exec $(docker ps -qf "name=redis") redis-cli LATENCY LATEST > loadtest/redis-latency-after.txt || true
           docker exec $(docker ps -qf "name=redis") redis-cli LATENCY HISTORY > loadtest/redis-latency-history.txt || true
           
           echo "✅ Redis metrics captured (after)"
@@ -227,8 +221,6 @@ jobs:
           - **Commit:** ${{ github.sha }}
           - **Timestamp:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")
           - **Duration:** See k6 results
-          
-          ## Latency Monitoring
           
           ### Before Load Test
           \`\`\`
@@ -467,7 +459,7 @@ jobs:
           echo "📦 Verifying frontend artifact..."
           cat artifacts/frontend-manifest.json
           
-          cd frontend
+          cd commerce-web
           tar -xzf ../artifacts/frontend-${{ needs.build-and-test.outputs.frontend-version }}.tar.gz
           echo "✅ Frontend artifact extracted"
 
@@ -476,7 +468,7 @@ jobs:
 
       - name: Deploy to Vercel (with environment secrets)
         id: deploy
-        working-directory: ./frontend
+        working-directory: ./commerce-web
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           NEXT_PUBLIC_API_URL: ${{ needs.deploy-backend.outputs.deployment-url }}
@@ -511,7 +503,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: vercel-deployment-logs-${{ github.sha }}
-          path: frontend/vercel_deploy.log
+          path: commerce-web/vercel_deploy.log
           retention-days: 30
 
   # ==========================================================================
