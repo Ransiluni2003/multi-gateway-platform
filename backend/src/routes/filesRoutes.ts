@@ -1,5 +1,6 @@
 import { Router, Request, Response } from "express";
 import { supabase } from "../config/supabaseClient";
+import { logAuditEvent } from "../utils/audit";
 
 const router = Router();
 
@@ -29,6 +30,13 @@ router.get("/download-url", async (req: Request, res: Response) => {
   }
 
   const expiresAt = Date.now() + (expirySeconds * 1000);
+  await logAuditEvent({
+    action: "ISSUE_SIGNED_URL",
+    status: "success",
+    ip: req.ip,
+    userAgent: req.headers["user-agent"],
+    details: { type: "download", key, expiresSeconds: expirySeconds },
+  });
   res.json({ 
     downloadUrl: data.signedUrl,
     expiresAt: expiresAt

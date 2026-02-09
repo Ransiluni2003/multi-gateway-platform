@@ -1,3 +1,47 @@
+# Security & Crypto Notes (Practical Rules)
+
+Short, practical rules for this app, with references to real code decisions.
+
+## 1) Hash passwords, never encrypt them
+- Use a slow password hash for storage and compare on login.
+- We hash on register and compare on login in [backend/src/routes/authRoutes.ts](backend/src/routes/authRoutes.ts#L16-L60) using `bcrypt`.
+
+## 2) Sign tokens for integrity; verify on every request
+- Use JWT signing for session/auth integrity and validate with the server secret.
+- We sign tokens in [backend/src/routes/authRoutes.ts](backend/src/routes/authRoutes.ts#L9-L13) and verify them in `protect` in [backend/src/middleware/authMiddleware.ts](backend/src/middleware/authMiddleware.ts#L19-L59).
+
+## 3) Encrypt only when you need confidentiality
+- Use encryption when the goal is secrecy, not integrity (e.g., PII at rest). This app currently relies on signed URLs and transport security rather than storing encrypted blobs.
+- Signed URL handling (integrity + time-bound access) is implemented in [frontend/app/api/files/download/route.js](frontend/app/api/files/download/route.js#L5-L99).
+
+## 4) Secure sessions with `httpOnly` cookies and CSRF notes
+- Session tokens should be stored in `httpOnly` cookies set by the server to reduce XSS risk.
+- Current UI sets cookies in the browser (not `httpOnly`) with `SameSite=Lax` in [frontend/app/login/page.tsx](frontend/app/login/page.tsx#L23-L36) and [frontend/app/register/page.tsx](frontend/app/register/page.tsx#L15-L28). This is acceptable for demo, but production should move to server-set cookies with `secure` and `httpOnly` flags.
+- If we ever use `SameSite=None`, add CSRF tokens for unsafe methods (POST/PUT/DELETE).
+
+## 5) Key handling: env-only + rotation by redeploy
+- Secrets live in environment variables and are required at runtime (`JWT_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`).
+- We enforce `JWT_SECRET` in [backend/src/routes/authRoutes.ts](backend/src/routes/authRoutes.ts#L9-L13) and `SUPABASE_SERVICE_ROLE_KEY` in [frontend/app/api/files/download/route.js](frontend/app/api/files/download/route.js#L6-L22).
+- Rotate by updating env values and restarting services; never commit secrets.
+
+## 6) Security headers are applied server-side
+- Default header hardening is enabled with `helmet()` in [backend/src/server.ts](backend/src/server.ts#L98-L105).
+- This is our baseline for CSP, frame-ancestors, and other browser protections.
+
+## 7) Rate limiting is enforced to reduce abuse
+- API-wide rate limiting exists in Express in [backend/src/server.ts](backend/src/server.ts#L108-L115).
+- Next.js API handlers can be wrapped with `withRateLimit` in [commerce-web/src/lib/withRateLimit.ts](commerce-web/src/lib/withRateLimit.ts#L25-L58) and presets are defined in [commerce-web/src/lib/rateLimit.ts](commerce-web/src/lib/rateLimit.ts#L106-L129).
+
+## 8) Audit logs for financial actions are mandatory
+- Refunds are logged to `TransactionLog` on both success and failure in [backend/src/routes/paymentsRoutes.ts](backend/src/routes/paymentsRoutes.ts#L21-L83).
+
+---
+
+## What we applied in our app this week (evidence)
+- Security headers via `helmet()` in [backend/src/server.ts](backend/src/server.ts#L98-L105).
+- Rate limiting in Express and API wrappers in [backend/src/server.ts](backend/src/server.ts#L108-L115) and [commerce-web/src/lib/withRateLimit.ts](commerce-web/src/lib/withRateLimit.ts#L25-L58).
+- Signed URLs with expiry and retry in [frontend/app/api/files/download/route.js](frontend/app/api/files/download/route.js#L5-L99).
+- Audit logs for refunds in [backend/src/routes/paymentsRoutes.ts](backend/src/routes/paymentsRoutes.ts#L21-L83).
 # Security & Cryptography Fundamentals
 
 ## 🎯 Purpose

@@ -129,6 +129,13 @@ graph TD
 | Media Gateway | Medium | High | App-enforced | Moderate |
 | NVR+Clips | Slowest | Highest | Best | High |
 
+## Security Controls Comparison
+| Option | Auth Model | Audit Controls | Privacy Controls | Notes |
+| --- | --- | --- | --- | --- |
+| Vendor Cloud | OAuth/OIDC with vendor | Vendor logs plus app-side access logging | Vendor-dependent retention and consent | Lowest control, fastest delivery |
+| Media Gateway | App JWT to gateway | Centralized app and gateway logs | App-managed policies per camera | Requires gateway hardening |
+| NVR + Clips | App auth to clip store | Full audit trail in app | Strongest retention and consent | Most complex to build |
+
 ---
 
 ## Recommendation

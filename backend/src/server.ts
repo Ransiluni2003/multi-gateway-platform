@@ -10,6 +10,7 @@ dotenv.config({
 
 import cors from "cors";
 import helmet from "helmet";
+import cookieParser from "cookie-parser";
 import { v4 as uuidv4 } from "uuid";
 import axios from "axios";
 import * as Sentry from "@sentry/node";
@@ -31,11 +32,15 @@ import errorHandler from "./middleware/errorHandler";
 import securityRoutes from "./routes/securityRoutes";
 import jobsRoutes from "./routes/jobsRoutes";
 import filesRoutes from "./routes/filesRoutes";
+import fileAccessRoutes from "./routes/fileAccessRoutes";
 import bundleRoutes from "./routes/bundleRoutes";
 import mockPaymentRoutes from "./routes/mockPaymentRoutes";
+import auditRoutes from "./routes/auditRoutes";
+import couponRoutes from "./routes/couponRoutes";
 import { initRedis, redisClient } from "./config/redisClient";
 import { getPaymentDetails } from "./services/paymentsService";
 import axiosInstance from "./utils/axiosRetryClient";
+import { logAuditEvent } from "./utils/audit";
 // Queues and monitoring
 import QueueManager from "./queues/queueManager";
 import { createQueueMetricsRouter } from "./queues/metricsRouter";
@@ -55,6 +60,18 @@ if (!supabaseUrl || !supabaseKey) {
 // ==========================
 export const supabase = createClient(supabaseUrl, supabaseKey);
 const STORAGE_BUCKET = process.env.SUPABASE_BUCKET || "uploads";
+const DEFAULT_ALLOWED_UPLOAD_TYPES = [
+  "application/octet-stream",
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+  "text/plain",
+];
+const ALLOWED_UPLOAD_TYPES = (process.env.UPLOAD_ALLOWED_MIME_TYPES || "")
+  .split(",")
+  .map((entry) => entry.trim().toLowerCase())
+  .filter(Boolean);
+const UPLOAD_MAX_BYTES = Number(process.env.UPLOAD_MAX_BYTES || 10 * 1024 * 1024);
 
 // ==========================
 // Connect MongoDB
@@ -88,6 +105,7 @@ if (logtailToken) {
 const app = express();
 // Health endpoint for load testing (must be after app is declared)
 app.use(express.json());
+app.use(cookieParser());
 
 // Initialize request start time for span tracking
 app.use((req: Request, res: Response, next: NextFunction) => {
@@ -138,10 +156,13 @@ app.use("/api/auth", authRoutes);
 app.use("/api/security", securityRoutes);
 app.use("/api/jobs", jobsRoutes);
 app.use("/api/files", filesRoutes);
+app.use("/api/files", fileAccessRoutes);
 app.use("/api/traces", tracesRoutes);
 app.use("/api/fraud", fraudRoutes);
 app.use("/api", bundleRoutes);
 app.use("/api", mockPaymentRoutes);
+app.use("/api", auditRoutes);
+app.use("/api", couponRoutes);
 
 // ==========================
 // Queues: init + metrics endpoints
@@ -235,8 +256,31 @@ app.get("/metrics", async (req: Request, res: Response) => {
 app.post("/api/files/upload-url", async (req: Request, res: Response) => {
   try {
     const { filename, contentType } = req.body;
+    const rawSize = req.body?.sizeBytes ?? req.body?.size ?? req.body?.contentLength;
     if (!filename || !contentType)
       return res.status(400).json({ error: "filename and contentType required" });
+
+    const allowedTypes = ALLOWED_UPLOAD_TYPES.length
+      ? ALLOWED_UPLOAD_TYPES
+      : DEFAULT_ALLOWED_UPLOAD_TYPES;
+    const normalizedContentType = String(contentType).toLowerCase();
+    if (!allowedTypes.includes(normalizedContentType)) {
+      return res.status(400).json({
+        error: "contentType not allowed",
+        allowedTypes,
+      });
+    }
+
+    const sizeBytes = Number(rawSize);
+    if (!Number.isFinite(sizeBytes) || sizeBytes <= 0) {
+      return res.status(400).json({ error: "sizeBytes required" });
+    }
+    if (sizeBytes > UPLOAD_MAX_BYTES) {
+      return res.status(413).json({
+        error: "file too large",
+        maxBytes: UPLOAD_MAX_BYTES,
+      });
+    }
 
     const fileKey = `uploads/${new Date().toISOString().slice(0, 10)}/${uuidv4()}-${filename}`;
     const { data, error } = await supabase.storage
@@ -246,7 +290,25 @@ app.post("/api/files/upload-url", async (req: Request, res: Response) => {
     if (error) throw error;
 
     logger.info("Generated Supabase signed upload URL", { fileKey });
-    res.json({ uploadUrl: data.signedUrl, key: fileKey });
+    await logAuditEvent({
+      action: "ISSUE_SIGNED_URL",
+      status: "success",
+      ip: req.ip,
+      userAgent: req.headers["user-agent"],
+      details: {
+        type: "upload",
+        key: fileKey,
+        contentType: normalizedContentType,
+        sizeBytes,
+        scanStatus: "pending",
+      },
+    });
+    res.json({
+      uploadUrl: data.signedUrl,
+      key: fileKey,
+      scanStatus: "pending",
+      maxBytes: UPLOAD_MAX_BYTES,
+    });
   } catch (err: any) {
     logger.error("Supabase upload URL failed", { error: err.message });
     Sentry.captureException(err);
@@ -287,6 +349,13 @@ app.get("/api/files/download-url", async (req: Request, res: Response) => {
         if (!isNaN(p)) expiresSeconds = Math.max(5, Math.min(p, 60 * 60));
       }
       const expiresAt = Date.now() + expiresSeconds * 1000;
+      await logAuditEvent({
+        action: "ISSUE_SIGNED_URL",
+        status: "success",
+        ip: req.ip,
+        userAgent: req.headers["user-agent"],
+        details: { type: "download", key, expiresSeconds, demo: true },
+      });
       return res.json({ downloadUrl, expiresAt });
     }
     // Optional `expires` query param (seconds). Clamp to safe bounds (1 minute - 1 hour).
@@ -332,6 +401,13 @@ app.get("/api/files/download-url", async (req: Request, res: Response) => {
     }
 
     logger.info("Generated Supabase signed download URL", { key, expiresSeconds, expiresAt });
+    await logAuditEvent({
+      action: "ISSUE_SIGNED_URL",
+      status: "success",
+      ip: req.ip,
+      userAgent: req.headers["user-agent"],
+      details: { type: "download", key, expiresSeconds },
+    });
     res.json({ downloadUrl: signedUrl, expiresAt });
   } catch (err: any) {
     logger.error("Supabase download URL failed", { error: err.message });
@@ -385,3 +461,5 @@ app.use(errorHandler);
     });
   });
 })();
+
+export default app;

@@ -1,5 +1,10 @@
 # Multi-Gateway Platform
 
+[![Security Tests](https://github.com/Ransiluni2003/multi-gateway-platform/actions/workflows/security-tests.yml/badge.svg)](https://github.com/Ransiluni2003/multi-gateway-platform/actions/workflows/security-tests.yml)
+[![CI/CD Pipeline](https://github.com/Ransiluni2003/multi-gateway-platform/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/Ransiluni2003/multi-gateway-platform/actions/workflows/ci-cd.yml)
+[![Node.js Version](https://img.shields.io/badge/node-%3E%3D20.0.0-brightgreen)](https://nodejs.org/)
+[![License](https://img.shields.io/badge/license-ISC-blue)](LICENSE)
+
 A comprehensive full-stack platform demonstrating multi-service architecture with payment processing, fraud detection, analytics, worker queues, OpenTelemetry tracing, and responsive frontend. This repository documents containerization, CI/CD, load-testing, observability, and Supabase integration.
 
 ---
@@ -38,6 +43,9 @@ Three phases successfully completed:
 
 ## 📋 Table of Contents
 
+- [✅ CI/CD & Security](#-cicd--security) ← **NEW: Security Test Automation**
+- [🎬 Local Setup & Demo Scripts](#-local-setup--demo-scripts) ← **START HERE**
+- [🧭 New Developer Setup + Proof Guide](#-new-developer-setup--proof-guide)
 - [Quick Start](#quick-start)
 - [Setup Instructions](#setup-instructions)
 - [Usage Guide](#usage-guide)
@@ -45,6 +53,133 @@ Three phases successfully completed:
 - [Loom Videos Guide](#loom-videos-guide)
 - [Architecture](#architecture)
 - [Features](#features)
+
+---
+
+## ✅ CI/CD & Security
+
+### Security Test Automation
+
+This project includes comprehensive security test automation that runs in CI/CD pipelines.
+
+**Status**: [![Security Tests](https://github.com/Ransiluni2003/multi-gateway-platform/actions/workflows/security-tests.yml/badge.svg)](https://github.com/Ransiluni2003/multi-gateway-platform/actions/workflows/security-tests.yml)
+
+#### Run Locally
+
+```bash
+# Run all security tests
+npm run test:security
+
+# Individual tests
+npm run verify:security-headers    # C1: CSP, X-Frame-Options, etc.
+npm run verify:rate-limiting       # C2: 429 responses on rate limit
+npm run demo:storage               # C3: Signed URL E2E demo
+npm run proof:audit-logs           # C4: Audit log verification
+npm run verify:secrets-hygiene     # C5: .env.example, no commits
+```
+
+#### CI/CD Pipeline
+
+The GitHub Actions workflow (`.github/workflows/security-tests.yml`) runs:
+
+1. **Lint & Type Check**
+   - Backend TypeScript validation
+   - Frontend type checking
+   - Code quality checks
+
+2. **Unit Tests**
+   - Backend Jest tests with coverage
+   - Codecov integration
+   - Test artifacts uploaded
+
+3. **Security Tests** (New!)
+   - ✅ **Security Headers**: Content-Security-Policy, X-Frame-Options, X-Content-Type-Options, Referrer-Policy
+   - ✅ **Rate Limiting**: /api/auth/* (5/15min), /api/webhooks/* (100/min), /api/coupons/validate (10/min)
+   - ✅ **Signed URLs**: Upload/Download/Expiry E2E with Supabase
+   - ✅ **Audit Logs**: LOGIN_SUCCESS, LOGIN_FAILURE, ISSUE_SIGNED_URL, VALIDATE_COUPON
+   - ✅ **Secrets Hygiene**: .env.example only, no real secrets committed
+
+4. **Build Artifacts**
+   - Backend tarball (dist/)
+   - Frontend tarball (.next/)
+   - Ready for deployment
+
+#### Test Results
+
+Tests run on:
+- `push` to main/develop branches
+- `pull_request` to main/develop branches
+- Daily schedule (2 AM UTC)
+
+View results: [GitHub Actions > Security Tests](https://github.com/Ransiluni2003/multi-gateway-platform/actions/workflows/security-tests.yml)
+
+---
+
+## 🎬 Local Setup & Demo Scripts
+
+**New to the project?** Start here to get running in 2 minutes:
+
+📖 **[Read: Local Setup & Demo Guide](./docs/LOCAL_SETUP_DEMO_GUIDE.md)**
+
+Shows:
+- ✅ How to run locally without Docker (2 mins)
+- ✅ Environment configuration 
+- ✅ One-command demos:
+  - `npm run demo:security` → Security headers + rate limiting
+  - `npm run demo:storage` → Signed URL flow
+  - `npm run verify:audit-logs` → Audit log verification
+- ✅ Troubleshooting guide
+
+---
+
+## 🧭 New Developer Setup + Proof Guide
+
+This is the minimum path a new dev can follow to validate security, storage, and audit logging without extra context.
+
+### Prerequisites
+- Node.js 18+
+- npm
+- Git
+- Supabase project (for signed URL demos)
+
+### 1) Configure Environment
+```bash
+cp .env.example .env
+```
+
+Fill these values in `.env`:
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `SUPABASE_BUCKET` (use `uploads`)
+- `JWT_SECRET`
+- `MONGO_URI`
+
+### 2) Run Supabase Setup (One Command)
+```bash
+npm run setup:supabase
+```
+
+This script:
+- Validates required env vars
+- Checks if the bucket exists (creates it if you used a service role key)
+- Prints a READY checklist with next steps
+
+### 3) Start Services
+```bash
+npm run dev
+```
+
+### 4) Proof Demos (One Command Each)
+```bash
+npm run demo:security
+npm run demo:storage
+npm run verify:audit-logs
+```
+
+### 5) What “Proof” Looks Like
+- **Security headers + rate limit:** `npm run demo:security` prints headers and shows a `429` after ~10 requests.
+- **Signed URL flow:** `npm run demo:storage` prints upload + download URL steps and expiry behavior.
+- **Audit logs:** `npm run verify:audit-logs` prints PASS/FAIL with action counts.
 
 ---
 

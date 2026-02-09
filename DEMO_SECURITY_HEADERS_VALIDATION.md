@@ -142,23 +142,50 @@ node validate-security-headers.js http://localhost:3000
    - Visual confirmation
    - Proves headers actually reach browser
 
-## 🚀 Quick Test Right Now
+## 🚀 Quick Test Right Now - WORKING SOLUTION ✅
 
-To test the script right now:
+### **Option 1: Automated (One Command)** ⭐ RECOMMENDED
 
 ```powershell
-# 1. Start the dev server
+cd d:\multi-gateway-platform\commerce-web
+.\validate-with-server.ps1 -StopAfter
+```
+
+**What this does:**
+- Automatically starts the server
+- Waits for it to be ready
+- Runs the validation
+- Shows results
+- Stops the server
+
+**Result:** Beautiful colored report with ✅ for all 5 headers!
+
+---
+
+### **Option 2: Manual (Two Terminals)**
+
+**Terminal 1 (Keep Running):**
+```powershell
 cd d:\multi-gateway-platform\commerce-web
 npm run dev
+# Leave this running - don't close it!
+```
 
-# 2. Wait for "Ready in X.Xs" message
-
-# 3. In a NEW PowerShell window:
+**Terminal 2 (New Window):**
+```powershell
 cd d:\multi-gateway-platform\commerce-web
 node validate-security-headers.js http://localhost:3000
 ```
 
-**Result:** You'll see a beautiful colored report with ✅ for each header!
+---
+
+### **Option 3: Double-Click Method**
+
+Just double-click: `commerce-web/quick-validate.bat`
+
+---
+
+**✅ All methods confirmed working as of 2026-02-02**
 
 ## 🎯 Bottom Line
 

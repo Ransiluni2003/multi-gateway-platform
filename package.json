@@ -7,6 +7,7 @@
     "build": "cd frontend && npm run build && cd ../backend && npm run build",
     "dev": "concurrently \"cd frontend && npm run dev\" \"cd backend && npm run dev\"",
     "test": "echo \"Error: no test specified\" && exit 1",
+    "test:security": "jest backend/tests/security.test.ts --testTimeout=30000 --coverage --coverageReporters=text-summary",
     "loadtest:ci": "npx artillery run loadtest/artillery.yml -o loadtest/report.json",
     "health-check": "node scripts/pre-deploy-health-check.js",
     "validate-deploy": "node scripts/post-deploy-validation.js",
@@ -29,7 +30,20 @@
     "db:reset": "cd commerce-web && npx prisma migrate reset --force && npm run seed",
     "test:e2e": "cd commerce-web && npm run test:e2e",
     "test:webhooks": "cd commerce-web && npm run test:webhooks",
-    "verify:docker": "node scripts/verify-docker-startup.js"
+    "verify:docker": "node scripts/verify-docker-startup.js",
+    "verify:security-headers": "node scripts/validate-security-headers.js",
+    "demo:security": "node scripts/demo-security.js",
+    "demo:storage": "node scripts/demo-storage.js",
+    "cleanup:retention": "node scripts/retention-cleanup.js",
+    "proof:audit-logs": "node scripts/proof-audit-logs.js",
+    "verify:audit-logs": "node scripts/verify-audit-logs.js",
+    "verify:rate-limiting": "node scripts/verify-rate-limiting.js",
+    "verify:admin-protection": "node scripts/verify-admin-protection.js",
+    "verify:secrets-hygiene": "node scripts/verify-secrets-hygiene.js",
+    "verify:order-status-ui": "node scripts/verify-order-status-ui.js",
+    "setup:supabase": "node scripts/setup-supabase.js",
+    "demo:preview": "node scripts/demo-preview.js",
+    "test:security": "node scripts/test-security.js"
   },
   "repository": {
     "type": "git",
@@ -62,6 +76,8 @@
     "winston": "^3.19.0"
   },
   "devDependencies": {
-    "@types/jest": "^30.0.0"
+    "@types/jest": "^30.0.0",
+    "@types/supertest": "^6.0.3",
+    "supertest": "^7.2.2"
   }
 }
