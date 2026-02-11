@@ -43,7 +43,9 @@
     "verify:order-status-ui": "node scripts/verify-order-status-ui.js",
     "setup:supabase": "node scripts/setup-supabase.js",
     "demo:preview": "node scripts/demo-preview.js",
-    "test:security": "node scripts/test-security.js"
+    "test:security": "node scripts/test-security.js",
+    "verify:rate-limiter": "node scripts/verify-rate-limiter.js",
+    "verify:pagination": "node scripts/verify-pagination.js"
   },
   "repository": {
     "type": "git",

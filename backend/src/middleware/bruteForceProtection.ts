@@ -2,20 +2,14 @@
 /**
  * Brute-Force Protection Middleware
  * Implements multi-layered protection against credential stuffing and brute-force attacks
+ * 
+ * UPDATED: Now uses pluggable rate limiter (in-memory dev / Redis prod)
  */
 
 import { Request, Response, NextFunction } from "express";
 import User from "../models/User";
 import logger from "../utils/logger";
-
-// In-memory store for IP-based rate limiting (use Redis in production)
-interface RateLimitEntry {
-  count: number;
-  resetAt: Date;
-  blocked: boolean;
-}
-
-const ipRateLimits = new Map<string, RateLimitEntry>();
+import { createRateLimiter, IRateLimiter } from "../services/rateLimiter";
 
 // Configuration
 const config = {
@@ -25,18 +19,14 @@ const config = {
   maxAttemptsPerAccount: 5, // Max attempts per account per window
   accountLockMinutes: 15, // How long to lock account
   suspiciousThreshold: 3, // Different IPs trying same account
-  cleanupInterval: 60 * 60 * 1000, // 1 hour
 };
 
-// Cleanup old rate limit entries
-setInterval(() => {
-  const now = new Date();
-  for (const [ip, entry] of ipRateLimits.entries()) {
-    if (entry.resetAt < now) {
-      ipRateLimits.delete(ip);
-    }
-  }
-}, config.cleanupInterval);
+// Initialize rate limiter (auto-detects Redis or uses in-memory)
+const rateLimiter: IRateLimiter = createRateLimiter({
+  maxAttempts: config.maxAttemptsPerIP,
+  windowMinutes: config.windowMinutes,
+  blockDurationMinutes: config.blockDurationMinutes,
+});
 
 /**
  * Get client IP address (handle proxies)
@@ -60,57 +50,23 @@ export function getUserAgent(req: Request): string {
 /**
  * Check if IP is rate-limited
  */
-function isIPRateLimited(ip: string): { limited: boolean; resetAt?: Date } {
-  const entry = ipRateLimits.get(ip);
-  if (!entry) return { limited: false };
-
-  const now = new Date();
-
-  // Check if rate limit window has expired
-  if (entry.resetAt < now) {
-    ipRateLimits.delete(ip);
-    return { limited: false };
-  }
-
-  // Check if IP is blocked
-  if (entry.blocked) {
-    return { limited: true, resetAt: entry.resetAt };
-  }
-
-  return { limited: false };
+async function isIPRateLimited(ip: string): Promise<{ limited: boolean; resetAt?: Date }> {
+  return await rateLimiter.isRateLimited(ip);
 }
 
 /**
  * Increment IP rate limit counter
  */
-function incrementIPAttempt(ip: string): void {
-  const now = new Date();
-  const entry = ipRateLimits.get(ip);
-
-  if (!entry || entry.resetAt < now) {
-    // Create new entry
-    ipRateLimits.set(ip, {
-      count: 1,
-      resetAt: new Date(now.getTime() + config.windowMinutes * 60 * 1000),
-      blocked: false,
+async function incrementIPAttempt(ip: string): Promise<void> {
+  await rateLimiter.incrementAttempt(ip);
+  
+  // Check if IP was just blocked
+  const count = await rateLimiter.getAttemptCount(ip);
+  if (count >= config.maxAttemptsPerIP) {
+    logger.warn("IP blocked due to excessive login attempts", {
+      ip,
+      attempts: count,
     });
-  } else {
-    // Increment existing entry
-    entry.count += 1;
-
-    // Block if exceeded threshold
-    if (entry.count >= config.maxAttemptsPerIP) {
-      entry.blocked = true;
-      entry.resetAt = new Date(
-        now.getTime() + config.blockDurationMinutes * 60 * 1000
-      );
-
-      logger.warn("IP blocked due to excessive login attempts", {
-        ip,
-        attempts: entry.count,
-        blockUntil: entry.resetAt,
-      });
-    }
   }
 }
 
@@ -127,7 +83,7 @@ export const checkBruteForce = async (
   const { email } = req.body;
 
   // Check IP rate limit
-  const { limited, resetAt } = isIPRateLimited(ip);
+  const { limited, resetAt } = await isIPRateLimited(ip);
   if (limited) {
     logger.warn("Login blocked - IP rate limited", { ip, email, resetAt });
     return res.status(429).json({
@@ -182,7 +138,7 @@ export const recordFailedLogin = async (
   const { email } = req.body;
 
   // Increment IP attempt counter
-  incrementIPAttempt(ip);
+  await incrementIPAttempt(ip);
 
   // Update user's failed attempt record
   if (email) {
