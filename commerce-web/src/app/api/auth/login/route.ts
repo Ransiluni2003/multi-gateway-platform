@@ -1,17 +1,18 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { authenticateUser, buildAuthCookie, signAuthToken } from '@/lib/auth';
+import { NextRequest, NextResponse } from "next/server";
+import { authenticateUser, buildAuthCookie, signAuthToken } from "@/lib/auth";
+import { withLogging } from "@/lib/request-logger";
 
-export async function POST(request: NextRequest) {
+const handlePOST = async (request: NextRequest) => {
   try {
     const { email, password } = await request.json();
 
     if (!email || !password) {
-      return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
+      return NextResponse.json({ error: "Email and password are required" }, { status: 400 });
     }
 
     const user = await authenticateUser(email, password);
     if (!user) {
-      return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
+      return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
     }
 
     const token = await signAuthToken(user);
@@ -21,7 +22,8 @@ export async function POST(request: NextRequest) {
     response.cookies.set(cookie.name, cookie.value, cookie.options);
     return response;
   } catch (error) {
-    console.error('Login error:', error);
-    return NextResponse.json({ error: 'Unable to log in' }, { status: 500 });
+    return NextResponse.json({ error: "Unable to log in" }, { status: 500 });
   }
-}
+};
+
+export const POST = withLogging(handlePOST, { routeName: "/api/auth/login" });

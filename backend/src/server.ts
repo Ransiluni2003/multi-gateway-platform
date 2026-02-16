@@ -2,6 +2,7 @@ import express, { Request, Response, NextFunction } from "express";
 import dotenv from "dotenv";
 import rateLimit from "express-rate-limit";
 import path from "path";
+import mongoose from "mongoose";
 
 // IMPORTANT: Load .env FIRST before any other imports that use it
 dotenv.config({
@@ -41,6 +42,9 @@ import { initRedis, redisClient } from "./config/redisClient";
 import { getPaymentDetails } from "./services/paymentsService";
 import axiosInstance from "./utils/axiosRetryClient";
 import { logAuditEvent } from "./utils/audit";
+import { structuredLogger } from "./utils/structuredLogger";
+const requestIdMiddleware = require("./middleware/requestId");
+import { requestLogger } from "./middleware/requestLogger";
 // Queues and monitoring
 import QueueManager from "./queues/queueManager";
 import { createQueueMetricsRouter } from "./queues/metricsRouter";
@@ -107,6 +111,12 @@ const app = express();
 app.use(express.json());
 app.use(cookieParser());
 
+// Request ID Middleware (must come before logging)
+app.use(requestIdMiddleware);
+
+// Request Logger Middleware
+app.use(requestLogger);
+
 // Initialize request start time for span tracking
 app.use((req: Request, res: Response, next: NextFunction) => {
   (req as any).startTime = Date.now();
@@ -140,9 +150,9 @@ Sentry.init({ dsn: process.env.SENTRY_DSN || "" });
 // Trace ID Middleware
 // ==========================
 app.use((req: Request, res: Response, next: NextFunction) => {
-  (req as any).traceId = uuidv4();
-  res.setHeader("X-Trace-ID", (req as any).traceId || "unknown");
-  console.log(`[${(req as any).traceId}] ${req.method} ${req.url}`);
+  // Reuse requestId as traceId for consistency
+  (req as any).traceId = (req as any).requestId || uuidv4();
+  res.setHeader("X-Trace-ID", (req as any).traceId);
   next();
 });
 
@@ -223,6 +233,38 @@ app.get("/api/health/services", async (req: Request, res: Response) => {
 app.get("/api/health", (req: Request, res: Response) =>
   res.json({ status: "OK", uptime: process.uptime() })
 );
+
+app.get("/api/ready", async (req: Request, res: Response) => {
+  const dbReady = mongoose.connection.readyState === 1;
+
+  let storageReady = false;
+  try {
+    const { error } = await supabase.storage.from(STORAGE_BUCKET).list("", { limit: 1 });
+    storageReady = !error;
+  } catch {
+    storageReady = false;
+  }
+
+  const ready = dbReady && storageReady;
+
+  res.status(ready ? 200 : 503).json({
+    status: ready ? "ready" : "degraded",
+    checks: {
+      database: dbReady ? "ready" : "down",
+      storage: storageReady ? "ready" : "down",
+    },
+    timestamp: new Date().toISOString(),
+  });
+});
+
+app.get("/api/version", (req: Request, res: Response) => {
+  res.json({
+    service: "gateway-backend",
+    version: process.env.APP_VERSION || "1.0.0",
+    gitSha: process.env.GIT_SHA || process.env.BUILD_SHA || "unknown",
+    buildTime: process.env.BUILD_TIME || "unknown",
+  });
+});
 
 // Root endpoint
 app.get("/", (req: Request, res: Response) =>

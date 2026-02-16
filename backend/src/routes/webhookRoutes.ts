@@ -3,6 +3,7 @@ import rateLimit from "express-rate-limit";
 import Stripe from "stripe";
 import TransactionLog from "../models/TransactionLog.js";
 import Subscription from "../models/Subscription.js"; // your model
+import { structuredLogger } from "../utils/structuredLogger";
 
 const router = express.Router();
 
@@ -40,9 +41,21 @@ router.post(
         process.env.STRIPE_WEBHOOK_SECRET as string
       );
     } catch (err: any) {
-      console.error("Stripe webhook signature verification failed:", err.message);
+      structuredLogger.error("Stripe webhook signature verification failed", err, {
+        requestId: (req as any).requestId,
+        route: req.path,
+        method: req.method,
+      });
       return res.status(400).send(`Webhook Error: ${err.message}`);
     }
+
+    structuredLogger.logWebhook(event.type, {
+      requestId: (req as any).requestId,
+      route: req.path,
+      method: req.method,
+      eventId: event.id,
+      idempotencyKey: req.headers["idempotency-key"] as string | undefined,
+    });
 
     // log raw event
     await TransactionLog.create({

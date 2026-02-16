@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { logger } from '@/lib/logger';
+import { getRequestId, withRequestId, logRequest, logResponse, logError } from '@/lib/request-logger';
 
 interface CreateOrderInput {
   email: string;
@@ -19,6 +21,10 @@ interface CreateOrderInput {
 }
 
 export async function POST(request: NextRequest) {
+  const requestId = getRequestId(request);
+  const startTime = Date.now();
+  logRequest(request);
+
   try {
     const body: CreateOrderInput = await request.json();
     const { email, firstName, lastName, address, city, state, zipCode, country, items, couponCode, discountAmount } = body;
@@ -106,22 +112,43 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    return NextResponse.json({
-      success: true,
+    logger.info('Order created successfully', {
+      requestId,
       orderId: order.id,
+      email: order.email,
       total: order.total,
       itemCount: order.items.length,
+      couponCode: couponCode || null,
     });
+
+    logResponse(request, requestId, 200, startTime);
+
+    return withRequestId(
+      NextResponse.json({
+        success: true,
+        orderId: order.id,
+        total: order.total,
+        itemCount: order.items.length,
+      }),
+      requestId
+    );
   } catch (error) {
-    console.error('Order creation error:', error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to create order' },
-      { status: 500 }
+    logError(request, requestId, error, 'Order creation error');
+    return withRequestId(
+      NextResponse.json(
+        { error: error instanceof Error ? error.message : 'Failed to create order' },
+        { status: 500 }
+      ),
+      requestId
     );
   }
 }
 
 export async function GET(request: NextRequest) {
+  const requestId = getRequestId(request);
+  const startTime = Date.now();
+  logRequest(request);
+
   try {
     const searchParams = request.nextUrl.searchParams;
     const orderId = searchParams.get('id');
@@ -142,13 +169,20 @@ export async function GET(request: NextRequest) {
       });
 
       if (!order) {
-        return NextResponse.json(
-          { error: 'Order not found' },
-          { status: 404 }
+        return withRequestId(
+          NextResponse.json(
+            { error: 'Order not found' },
+            { status: 404 }
+          ),
+          requestId
         );
       }
 
-      return NextResponse.json({ success: true, order });
+      logResponse(request, requestId, 200, startTime);
+      return withRequestId(
+        NextResponse.json({ success: true, order }),
+        requestId
+      );
     }
 
     // Get all orders (optionally filtered by email)
@@ -169,16 +203,30 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    return NextResponse.json({ 
-      success: true, 
-      orders,
-      count: orders.length 
+    logger.info('Orders retrieved successfully', {
+      requestId,
+      count: orders.length,
+      email: email || 'all',
     });
+
+    logResponse(request, requestId, 200, startTime);
+
+    return withRequestId(
+      NextResponse.json({ 
+        success: true, 
+        orders,
+        count: orders.length 
+      }),
+      requestId
+    );
   } catch (error) {
-    console.error('Order retrieval error:', error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to retrieve orders' },
-      { status: 500 }
+    logError(request, requestId, error, 'Order retrieval error');
+    return withRequestId(
+      NextResponse.json(
+        { error: error instanceof Error ? error.message : 'Failed to retrieve orders' },
+        { status: 500 }
+      ),
+      requestId
     );
   }
 }

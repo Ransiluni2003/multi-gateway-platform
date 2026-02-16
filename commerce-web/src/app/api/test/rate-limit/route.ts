@@ -7,9 +7,10 @@
  * Rate Limit: 10 requests per minute
  */
 
-import { NextResponse } from 'next/server';
-import { withRateLimit } from '@/lib/withRateLimit';
-import { RATE_LIMITS } from '@/lib/rateLimit';
+import { NextResponse } from "next/server";
+import { withRateLimit } from "@/lib/withRateLimit";
+import { RATE_LIMITS } from "@/lib/rateLimit";
+import { withLogging } from "@/lib/request-logger";
 
 async function handlePOST(req: Request) {
   try {
@@ -20,13 +21,13 @@ async function handlePOST(req: Request) {
     
     return NextResponse.json({
       success: true,
-      message: 'Request successful',
+      message: "Request successful",
       timestamp: new Date().toISOString(),
       data: body,
     });
   } catch (error) {
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: "Internal server error" },
       { status: 500 }
     );
   }
@@ -34,4 +35,5 @@ async function handlePOST(req: Request) {
 
 // Apply rate limiting: 10 requests per minute
 // This is the same limit used for validation endpoints
-export const POST = withRateLimit(handlePOST, RATE_LIMITS.VALIDATION);
+const rateLimitedPOST = withRateLimit(handlePOST, RATE_LIMITS.VALIDATION);
+export const POST = withLogging(rateLimitedPOST as any, { routeName: "/api/test/rate-limit" });

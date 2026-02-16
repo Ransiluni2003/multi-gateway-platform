@@ -45,7 +45,12 @@
     "demo:preview": "node scripts/demo-preview.js",
     "test:security": "node scripts/test-security.js",
     "verify:rate-limiter": "node scripts/verify-rate-limiter.js",
-    "verify:pagination": "node scripts/verify-pagination.js"
+    "verify:pagination": "node scripts/verify-pagination.js",
+    "demo:logs": "node scripts/demo-logs.js",
+    "verify:health": "node scripts/verify-health.js",
+    "test:rate-limit": "node scripts/test-rate-limit-store.js",
+    "jobs:dry-run": "node scripts/run-jobs.js --dry-run",
+    "jobs:run": "node scripts/run-jobs.js"
   },
   "repository": {
     "type": "git",
@@ -80,6 +85,8 @@
   "devDependencies": {
     "@types/jest": "^30.0.0",
     "@types/supertest": "^6.0.3",
-    "supertest": "^7.2.2"
+    "supertest": "^7.2.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
   }
 }

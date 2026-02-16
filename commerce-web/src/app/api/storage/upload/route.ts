@@ -9,10 +9,11 @@
  * - Returns time-limited upload URL
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { generateUploadUrl, validateFile } from '@/lib/storage';
-import { withRateLimit } from '@/lib/withRateLimit';
-import { RATE_LIMITS } from '@/lib/rateLimit';
+import { NextRequest, NextResponse } from "next/server";
+import { generateUploadUrl, validateFile } from "@/lib/storage";
+import { withRateLimit } from "@/lib/withRateLimit";
+import { RATE_LIMITS } from "@/lib/rateLimit";
+import { withLogging } from "@/lib/request-logger";
 
 async function handlePOST(request: NextRequest) {
   try {
@@ -20,7 +21,7 @@ async function handlePOST(request: NextRequest) {
 
     if (!fileName || !fileType || !fileSize) {
       return NextResponse.json(
-        { error: 'Missing required fields: fileName, fileType, fileSize' },
+        { error: "Missing required fields: fileName, fileType, fileSize" },
         { status: 400 }
       );
     }
@@ -42,7 +43,7 @@ async function handlePOST(request: NextRequest) {
     // Permission check
     if (!isAdmin) {
       return NextResponse.json(
-        { error: 'Unauthorized: Admin access required' },
+        { error: "Unauthorized: Admin access required" },
         { status: 403 }
       );
     }
@@ -61,12 +62,12 @@ async function handlePOST(request: NextRequest) {
       uploadUrl: result.uploadUrl,
       filePath: result.filePath,
       expiresAt: result.expiresAt,
-      message: 'Upload URL generated. Use PUT request to upload file.',
+      message: "Upload URL generated. Use PUT request to upload file.",
     });
   } catch (error) {
-    console.error('Upload URL generation error:', error);
+    console.error("Upload URL generation error:", error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: "Internal server error" },
       { status: 500 }
     );
   }
@@ -74,4 +75,5 @@ async function handlePOST(request: NextRequest) {
 
 // Apply rate limiting: 10 uploads per minute
 // WHY: Prevents abuse - can't spam file uploads
-export const POST = withRateLimit(handlePOST, RATE_LIMITS.GENERAL);
+const rateLimitedPOST = withRateLimit(handlePOST, RATE_LIMITS.GENERAL);
+export const POST = withLogging(rateLimitedPOST as any, { routeName: "/api/storage/upload" });

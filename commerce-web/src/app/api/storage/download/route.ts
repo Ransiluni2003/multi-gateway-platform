@@ -9,10 +9,11 @@
  * - URL expires after 1 hour
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { generateDownloadUrl } from '@/lib/storage';
-import { withRateLimit } from '@/lib/withRateLimit';
-import { RATE_LIMITS } from '@/lib/rateLimit';
+import { NextRequest, NextResponse } from "next/server";
+import { generateDownloadUrl } from "@/lib/storage";
+import { withRateLimit } from "@/lib/withRateLimit";
+import { RATE_LIMITS } from "@/lib/rateLimit";
+import { withLogging } from "@/lib/request-logger";
 
 async function handlePOST(request: NextRequest) {
   try {
@@ -20,7 +21,7 @@ async function handlePOST(request: NextRequest) {
 
     if (!filePath) {
       return NextResponse.json(
-        { error: 'Missing required field: filePath' },
+        { error: "Missing required field: filePath" },
         { status: 400 }
       );
     }
@@ -43,12 +44,12 @@ async function handlePOST(request: NextRequest) {
     return NextResponse.json({
       downloadUrl: result.downloadUrl,
       expiresAt: result.expiresAt,
-      message: 'Download URL generated. Valid for 1 hour.',
+      message: "Download URL generated. Valid for 1 hour.",
     });
   } catch (error) {
-    console.error('Download URL generation error:', error);
+    console.error("Download URL generation error:", error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: "Internal server error" },
       { status: 500 }
     );
   }
@@ -56,4 +57,5 @@ async function handlePOST(request: NextRequest) {
 
 // Apply rate limiting
 // WHY: Prevents abuse - can't spam download requests
-export const POST = withRateLimit(handlePOST, RATE_LIMITS.GENERAL);
+const rateLimitedPOST = withRateLimit(handlePOST, RATE_LIMITS.GENERAL);
+export const POST = withLogging(rateLimitedPOST as any, { routeName: "/api/storage/download" });
