@@ -48,6 +48,7 @@
     "verify:pagination": "node scripts/verify-pagination.js",
     "demo:logs": "node scripts/demo-logs.js",
     "verify:health": "node scripts/verify-health.js",
+    "demo:security-center": "node scripts/demo-security-center.js",
     "test:rate-limit": "node scripts/test-rate-limit-store.js",
     "jobs:dry-run": "node scripts/run-jobs.js --dry-run",
     "jobs:run": "node scripts/run-jobs.js"
