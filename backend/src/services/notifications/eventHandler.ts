@@ -1,7 +1,9 @@
-// src/services/reports/eventHandler.ts
+// src/services/notifications/eventHandler.ts
 import { Queue } from "bullmq";
-import { redisClient } from "../../config/redis";
+import EventBus from "../../core/eventbus/redisEventBus";
 import { EventLog } from "../../models/EventLog";
+import { extractTraceContext, withExtractedContext, injectTraceContext } from '../../utils/traceContext';
+import { trace } from '@opentelemetry/api';
 
 // Create BullMQ queue instance
 const reportQueue = new Queue("reportQueue", {
@@ -16,36 +18,67 @@ const reportQueue = new Queue("reportQueue", {
 
 // Async function to handle Redis pub/sub
 export async function handleRedisEvents() {
-  // Subscribe to the "events" channel
-  const subscriber = redisClient.duplicate(); // duplicate connection for pub/sub
-  await subscriber.connect();
-  await subscriber.subscribe("events", async (message) => {
+  // Subscribe to the specific channel published by analytics
+  EventBus.subscribe("report.generate", async (parsedMsg) => {
+    console.log('📨 Notifications received report.generate event');
     try {
-      const { type, payload } = JSON.parse(message);
-
-      if (type !== "report.generate") return;
-
+      // parsedMsg is already the clean report object from EventBus
       const start = Date.now();
 
-      // Log received event
-      await EventLog.create({
-        event: type,
-        status: "received",
-        source: "reports",
-        traceId: payload.traceId,
-      });
+      // Trace context is automatically handled by EventBus withExtractedContext wrapper
+      // Execute report generation in a child span
+      const processReport = async () => {
+        const span = trace.getTracer('multi-gateway-tracer').startSpan('Notifications: Process Report');
 
-      // Add job to BullMQ queue
-      await reportQueue.add("generate-report", payload, { attempts: 3 });
+        try {
+          // Log received event
+          const logSpan = trace.getTracer('multi-gateway-tracer').startSpan('Notifications: Log Event');
+          try {
+            await EventLog.create({
+              event: "report.generate",
+              status: "received",
+              source: "reports",
+              traceId: parsedMsg.traceId,
+            });
+            logSpan.end();
+          } catch (err) {
+            logSpan.recordException(err as Error);
+            logSpan.end();
+          }
 
-      // Log queued event
-      await EventLog.create({
-        event: type,
-        status: "queued",
-        source: "reports",
-        duration: Date.now() - start,
-        traceId: payload.traceId,
-      });
+          // Add job to BullMQ queue with trace context
+          const queueSpan = trace.getTracer('multi-gateway-tracer').startSpan('Notifications: Queue Report Job');
+          try {
+            await reportQueue.add("generate-report", {
+              ...parsedMsg,
+              _traceContext: injectTraceContext(), // Propagate trace to worker
+            }, { attempts: 3 });
+            queueSpan.end();
+          } catch (err) {
+            queueSpan.recordException(err as Error);
+            queueSpan.end();
+            throw err;
+          }
+
+          // Log queued event
+          await EventLog.create({
+            event: "report.generate",
+            status: "queued",
+            source: "reports",
+            duration: Date.now() - start,
+            traceId: parsedMsg.traceId,
+          });
+
+          span.end();
+        } catch (err) {
+          span.recordException(err as Error);
+          span.end();
+          throw err;
+        }
+      };
+
+      // Trace context is already active from EventBus wrapper, just execute
+      await processReport();
     } catch (err) {
       console.error("❌ Event handler error:", err);
 

@@ -43,11 +43,18 @@ export async function getFraudAndRefundTrend(req: Request, res: Response) {
     });
 
     const data = Object.entries(dayMap)
-      .map(([date, counts]) => ({
-        date,
-        fraud: counts.fraud,
-        refund: counts.refund
-      }))
+      .map(([date, counts]) => {
+        const totalTransactions = counts.fraud + counts.refund || 1; // Avoid division by zero
+        const refundRatio = counts.refund / totalTransactions;
+        
+        return {
+          date,
+          fraudCount: counts.fraud,
+          refundRatio: refundRatio,
+          refundCount: counts.refund,
+          totalTransactions: totalTransactions
+        };
+      })
       .sort((a, b) => a.date.localeCompare(b.date));
 
     console.log('Final data:', data);

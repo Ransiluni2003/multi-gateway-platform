@@ -1,0 +1,190 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  name        String
+  price       Float
+  description String
+  images      String   // JSON string of array
+  stock       Int      @default(0)
+  status      String   @default("active") // "active" or "inactive"
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  orderItems  OrderItem[]
+
+  @@index([status])
+  @@index([createdAt])
+}
+
+model Order {
+  id                String   @id @default(cuid())
+  email             String
+  total             Float
+  subtotal          Float
+  discountAmount    Float    @default(0)
+  status            String   @default("pending") // "pending", "completed", "failed", "refunded"
+  
+  // Stripe
+  stripePaymentIntentId String? @unique
+  stripeTransactionId   String?
+  
+  // Coupon
+  couponCode        String?
+  coupon            Coupon?  @relation(fields: [couponCode], references: [code])
+  
+  // Customer info
+  firstName         String
+  lastName          String
+  address           String
+  city              String
+  state             String
+  zipCode           String
+  country           String
+  
+  // Items
+  items             OrderItem[]
+  
+  // Payment
+  payment           Payment?
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([status])
+  @@index([stripePaymentIntentId])
+  @@index([email])
+  @@index([couponCode])
+  @@index([createdAt])
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  quantity  Int
+  price     Float   // Price at time of purchase
+  
+  orderId   String
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+  
+  createdAt DateTime @default(now())
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+model Payment {
+  id                    String   @id @default(cuid())
+  
+  orderId               String   @unique
+  order                 Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  
+  // Stripe info
+  stripePaymentIntentId String   @unique
+  stripeChargeId        String?
+  stripeCustomerId      String?
+  
+  amount                Float
+  currency              String   @default("usd")
+  status                String   @default("pending") // "pending", "succeeded", "failed", "refunded"
+  
+  // Webhook tracking
+  lastWebhookEvent      String?
+  lastWebhookTime       DateTime?
+  
+  // Refund info
+  refundAmount          Float    @default(0)
+  refundReason          String?
+  refundedAt            DateTime?
+  
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([stripePaymentIntentId])
+  @@index([status])
+  @@index([createdAt])
+}
+model WebhookEvent {
+  id                String   @id @default(cuid())
+  stripeEventId     String   @unique // Stripe's unique event ID
+  eventType         String   // e.g., "payment_intent.succeeded"
+  status            String   @default("processed") // "processed", "failed"
+  
+  // Payload info
+  payload           String? // Raw event data
+  
+  // Processing info
+  processedAt       DateTime @default(now())
+  errorMessage      String?
+  
+  createdAt         DateTime @default(now())
+
+  @@index([stripeEventId])
+  @@index([eventType])
+  @@index([processedAt])
+}
+
+model Coupon {
+  code              String   @id // Unique promo code: "SAVE10", "SUMMER20"
+  type              String   // "percent" or "amount"
+  value             Float    // e.g., 10 for 10% OR 15 for $15 off
+  
+  // Availability
+  expiresAt         DateTime?
+  maxRedemptions    Int?     // null = unlimited
+  redemptionCount   Int      @default(0) // Current redemptions
+  isActive          Boolean  @default(true)
+  
+  // Relations
+  orders            Order[]
+  
+  // Metadata
+  description       String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([isActive])
+  @@index([expiresAt])
+}
+
+model AuditLog {
+  id            String   @id @default(cuid())
+  
+  // Actor (who did it)
+  actorId       String?  // User ID (null if system action)
+  actorEmail    String?  // User email for easy reference
+  actorRole     String?  // "admin", "user", "system"
+  
+  // Action (what happened)
+  action        String   // "LOGIN_SUCCESS", "CREATE_PRODUCT", "REFUND_ORDER", etc.
+  resource      String?  // "product", "order", "coupon", "user"
+  resourceId    String?  // ID of affected resource
+  
+  // Details
+  metadata      String?  // JSON string with additional context
+  ipAddress     String?  // Client IP address
+  userAgent     String?  // Browser/client info
+  
+  // Result
+  status        String   @default("success") // "success", "failure"
+  errorMessage  String?  // If action failed
+  
+  createdAt     DateTime @default(now())
+
+  @@index([actorId])
+  @@index([action])
+  @@index([createdAt])
+  @@index([resource, resourceId])
+}

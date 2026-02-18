@@ -20,43 +20,7 @@ const serviceColor = (service) => {
 };
 
 const TraceViewer = () => {
-  const [traces, setTraces] = useState([
-    {
-      traceID: "demo-trace-1",
-      serviceName: "payments",
-      path: "/api/payments/charge",
-      method: "POST",
-      status: 200,
-      duration: 1850,
-      ts: Date.now() - 5 * 60 * 1000,
-      spans: [
-        {
-          spanID: "s1",
-          operation: "HTTP POST /charge",
-          service: "gateway",
-          status: 200,
-          startOffsetMs: 0,
-          durationMs: 0.9,
-        },
-        {
-          spanID: "s2",
-          operation: "DB insert",
-          service: "payments-db",
-          status: 200,
-          startOffsetMs: 0.2,
-          durationMs: 0.4,
-        },
-        {
-          spanID: "s3",
-          operation: "Call fraud service",
-          service: "fraud",
-          status: 200,
-          startOffsetMs: 0.45,
-          durationMs: 0.55,
-        },
-      ],
-    },
-  ]);
+  const [traces, setTraces] = useState([]);
   const [selectedTraceId, setSelectedTraceId] = useState("demo-trace-1");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);

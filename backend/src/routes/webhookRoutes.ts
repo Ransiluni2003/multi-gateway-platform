@@ -1,9 +1,20 @@
 import express from "express";
+import rateLimit from "express-rate-limit";
 import Stripe from "stripe";
 import TransactionLog from "../models/TransactionLog.js";
 import Subscription from "../models/Subscription.js"; // your model
+import { structuredLogger } from "../utils/structuredLogger";
 
 const router = express.Router();
+
+// Rate limiter for webhook routes: 100 requests per minute
+const webhookLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 100, // 100 requests per window
+  message: { message: "Too many webhook requests. Please slow down." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 // Fix Stripe API version type issue
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
@@ -17,6 +28,7 @@ interface StripeInvoice extends Stripe.Invoice {
 
 router.post(
   "/webhook/stripe",
+  webhookLimiter,
   express.raw({ type: "application/json" }),
   async (req, res) => {
     const sig = req.headers["stripe-signature"] as string;
@@ -29,9 +41,21 @@ router.post(
         process.env.STRIPE_WEBHOOK_SECRET as string
       );
     } catch (err: any) {
-      console.error("Stripe webhook signature verification failed:", err.message);
+      structuredLogger.error("Stripe webhook signature verification failed", err, {
+        requestId: (req as any).requestId,
+        route: req.path,
+        method: req.method,
+      });
       return res.status(400).send(`Webhook Error: ${err.message}`);
     }
+
+    structuredLogger.logWebhook(event.type, {
+      requestId: (req as any).requestId,
+      route: req.path,
+      method: req.method,
+      eventId: event.id,
+      idempotencyKey: req.headers["idempotency-key"] as string | undefined,
+    });
 
     // log raw event
     await TransactionLog.create({

@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import Stripe from "stripe";
 import axios from "axios";
 import dotenv from "dotenv";
+import { structuredLogger } from "../utils/structuredLogger";
 
 dotenv.config();
 
@@ -41,6 +42,14 @@ export const stripeWebhook = async (req: Request, res: Response) => {
       process.env.STRIPE_WEBHOOK_SECRET as string
     );
 
+    structuredLogger.logWebhook(event.type, {
+      requestId: (req as any).requestId,
+      route: req.path,
+      method: req.method,
+      eventId: event.id,
+      idempotencyKey: req.headers["idempotency-key"] as string | undefined,
+    });
+
     switch (event.type) {
       case "payment_intent.succeeded":
         console.log("✅ Stripe payment succeeded:", event.data.object);
@@ -54,7 +63,11 @@ export const stripeWebhook = async (req: Request, res: Response) => {
 
     res.status(200).send("Webhook received");
   } catch (error: any) {
-    console.error("Webhook Error:", error.message);
+    structuredLogger.error("Stripe webhook error", error, {
+      requestId: (req as any).requestId,
+      route: req.path,
+      method: req.method,
+    });
     res.status(400).send(`Webhook Error: ${error.message}`);
   }
 };
@@ -91,11 +104,21 @@ export const createPayPalPayment = async (req: Request, res: Response) => {
 // === PayPal Webhook ===
 export const paypalWebhook = async (req: Request, res: Response) => {
   try {
-    console.log("📬 PayPal webhook event:", req.body);
+    structuredLogger.logWebhook("paypal.webhook", {
+      requestId: (req as any).requestId,
+      route: req.path,
+      method: req.method,
+      eventId: (req.body as any)?.id,
+      idempotencyKey: req.headers["paypal-transmission-id"] as string | undefined,
+    });
     // handle order capture or completed payment event here
     res.status(200).send("PayPal webhook received");
   } catch (error: any) {
-    console.error("PayPal Webhook Error:", error.message);
+    structuredLogger.error("PayPal webhook error", error, {
+      requestId: (req as any).requestId,
+      route: req.path,
+      method: req.method,
+    });
     res.status(500).json({ error: error.message });
   }
 };

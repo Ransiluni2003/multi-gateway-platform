@@ -1,108 +1,122 @@
 "use client";
 
-import { useState } from "react";
+import Link from "next/link";
+import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import styles from "./login.module.css";
 
-interface User {
+interface LoginResponse {
+  _id: string;
+  name: string;
+  email: string;
   role: string;
-  username: string;
-  [key: string]: any;
+  token: string;
 }
 
 export default function LoginPage() {
-  const [username, setUsername] = useState<string>("");
-  const [password, setPassword] = useState<string>("");
-  const [loading, setLoading] = useState<boolean>(false);
   const router = useRouter();
+  const [email, setEmail] = useState<string>("");
+  const [password, setPassword] = useState<string>("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // SSR-safe localStorage helper
-  const setLocalStorage = (key: string, value: any) => {
-    if (typeof window === "undefined") return;
-    localStorage.setItem(key, JSON.stringify(value));
+  const persistAuth = (payload: LoginResponse) => {
+    const userPayload = {
+      id: payload._id,
+      name: payload.name,
+      email: payload.email,
+      role: payload.role,
+    };
+
+    localStorage.setItem("authToken", payload.token);
+    localStorage.setItem("user", JSON.stringify(userPayload));
+
+    const cookieOptions = "path=/; max-age=604800; samesite=lax"; // 7 days
+    document.cookie = `token=${payload.token}; ${cookieOptions}`;
+    document.cookie = `user=${encodeURIComponent(JSON.stringify(userPayload))}; ${cookieOptions}`;
   };
 
-  const login = async (username: string, password: string) => {
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+
     try {
-      setLoading(true);
+      const apiBase = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:5000';
+      const res = await fetch(`${apiBase}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
 
-      // 1️⃣ Authenticate
-      const authRes = await fetch(
-        "https://docker-image-production-71e6.up.railway.app/wp-json/api/auth/me",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ username, password }),
-        }
-      );
-
-      if (!authRes.ok) throw new Error("Invalid username or password");
-
-      const authData = await authRes.json();
-      const token: string = authData.token;
-
-      // 2️⃣ Fetch user info
-      const userRes = await fetch(
-        "https://docker-image-production-71e6.up.railway.app/wp-json/api/auth/me",
-        {
-          headers: { Authorization: "Bearer " + token },
-        }
-      );
-
-      if (!userRes.ok) throw new Error("Failed to fetch user info");
-
-      const user: User = await userRes.json();
-
-      // 3️⃣ Save token + user data
-      setLocalStorage("token", token);
-      setLocalStorage("user", user);
-
-      // Save in cookies for middleware access
-      if (typeof document !== "undefined") {
-        document.cookie = `token=${token}; path=/;`;
-        document.cookie = `user=${JSON.stringify(user)}; path=/;`;
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({ message: "Login failed" }));
+        throw new Error(body?.message || "Login failed");
       }
 
-      // 4️⃣ Redirect by role
-      if (user.role === "administrator") router.push("/dashboard");
-      else if (user.role === "seller") router.push("/dashboard/seller");
-      else if (["subscriber", "customer"].includes(user.role))
-        router.push("/dashboard/user");
-      else alert("Unknown user role.");
-    } catch (error) {
-      console.error("Login failed:", error);
-      alert("Login failed. Please check your credentials.");
+      const data: LoginResponse = await res.json();
+      persistAuth(data);
+      router.push("/dashboard");
+    } catch (err: any) {
+      setError(err?.message || "Login failed");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="login flex flex-col items-center justify-center min-h-screen bg-gray-50">
-      <h2 className="text-2xl font-semibold mb-4">Login</h2>
+    <div className={styles.page}>
+      <div className={styles.hero}>
+        <div className={styles.badge}>Secure access</div>
+        <h2>Keep fraud and refunds in check.</h2>
+        <p>Login to monitor fraud trends, refund ratios, and simulate traffic with one click.</p>
+        <ul>
+          <li>Real data sourced from MongoDB</li>
+          <li>Dual-axis fraud and refund ratio chart</li>
+          <li>Role-ready layout with quick logout</li>
+        </ul>
+      </div>
 
-      <input
-        type="text"
-        placeholder="Username"
-        className="border rounded-md p-2 w-64 mb-3"
-        value={username}
-        onChange={(e) => setUsername(e.target.value)}
-      />
+      <div className={styles.panel}>
+        <div className={styles.brand}>Multi-Gateway</div>
+        <h1>Welcome back</h1>
+        <p className={styles.subtitle}>Sign in to access the fraud analytics dashboard.</p>
 
-      <input
-        type="password"
-        placeholder="Password"
-        className="border rounded-md p-2 w-64 mb-3"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-      />
+        <form onSubmit={handleSubmit} className={styles.form}>
+          <label className={styles.label}>
+            Email
+            <input
+              type="email"
+              placeholder="you@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+          </label>
 
-      <button
-        onClick={() => login(username, password)}
-        disabled={loading}
-        className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition disabled:opacity-50"
-      >
-        {loading ? "Logging in..." : "Login"}
-      </button>
+          <label className={styles.label}>
+            Password
+            <input
+              type="password"
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+          </label>
+
+          {error && <div className={styles.error}>⚠️ {error}</div>}
+
+          <button type="submit" className={styles.submit} disabled={loading}>
+            {loading ? "Signing in..." : "Login"}
+          </button>
+        </form>
+
+        <div className={styles.footer}>
+          <span>Don't have an account?</span>
+          <Link href="/register" className={styles.link}>Create one</Link>
+        </div>
+      </div>
     </div>
   );
 }

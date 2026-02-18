@@ -1,0 +1,98 @@
+config:
+  target: "http://localhost:5000"
+  phases:
+    # Warm-up phase
+    - duration: 30
+      arrivalRate: 10
+      name: "Warm-up (10 RPS)"
+    
+    # Gradual ramp to 500 RPS
+    - duration: 60
+      arrivalRate: 50
+      rampTo: 500
+      name: "Ramp-up to 500 RPS"
+    
+    # Sustain 1000 concurrent requests
+    - duration: 180
+      arrivalRate: 1000
+      name: "1000 Concurrent Requests (3 min sustained)"
+    
+    # Cool-down
+    - duration: 30
+      arrivalRate: 100
+      name: "Cool-down"
+  
+  http:
+    timeout: 30
+  
+  processor: "./processor.js"
+  
+  plugins:
+    metrics-by-endpoint:
+      stripQueryString: true
+    expect: {}
+
+scenarios:
+  # Health check - lightweight
+  - name: "Health Check"
+    weight: 10
+    flow:
+      - get:
+          url: "/health"
+          expect:
+            - statusCode: 200
+
+  # Payment processing - heavy (queue + DB)
+  - name: "Payment Processing"
+    weight: 40
+    flow:
+      - post:
+          url: "/api/payments/pay"
+          json:
+            amount: "{{ $randomNumber(10, 1000) }}"
+            currency: "USD"
+            paymentMethod: "credit_card"
+            merchantId: "merchant-{{ $randomNumber(1, 100) }}"
+            source: "loadtest-{{ $randomString() }}"
+          capture:
+            - json: "$.jobId"
+              as: "jobId"
+          expect:
+            - statusCode: [200, 201, 202]
+
+  # Job status check
+  - name: "Job Status Query"
+    weight: 20
+    flow:
+      - get:
+          url: "/api/jobs/{{ jobId }}"
+          beforeRequest: "setDefaultJobId"
+
+  # Analytics query
+  - name: "Analytics Query"
+    weight: 15
+    flow:
+      - get:
+          url: "/api/analytics/stats"
+          expect:
+            - statusCode: [200, 404]
+
+  # Fraud detection query
+  - name: "Fraud Detection"
+    weight: 10
+    flow:
+      - get:
+          url: "/api/analytics/fraud-trend"
+          expect:
+            - statusCode: [200, 404]
+
+  # Notifications
+  - name: "Notifications"
+    weight: 5
+    flow:
+      - post:
+          url: "/api/notifications/send"
+          json:
+            type: "email"
+            recipient: "loadtest-{{ $randomNumber(1, 1000) }}@example.com"
+            message: "Load test notification #{{ $randomNumber(1, 10000) }}"

@@ -28,8 +28,8 @@ export async function GET(request) {
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     const bucket = process.env.SUPABASE_BUCKET || 'platform-assets';
     const expiresNumeric = Number.isFinite(expiresSec) ? expiresSec : 300;
-    // Clamp expiry to a small value so you can test expiry easily
-    const MIN_EXPIRY = 60; // seconds (safer minimum)
+    // Supabase has a practical minimum - testing with 60 seconds
+    const MIN_EXPIRY = 60; // seconds (Supabase minimum for reliable expiry)
     const MAX_EXPIRY = 604800; // 7 days in seconds (Supabase upper bound)
     const expiresEffective = Math.min(Math.max(expiresNumeric, MIN_EXPIRY), MAX_EXPIRY);
 
@@ -48,16 +48,24 @@ export async function GET(request) {
 
     // Helper: create signed URL once
     console.log('[DEBUG] Using expiresIn (seconds):', expiresEffective);
+    console.log('[DEBUG] Current server time:', new Date().toISOString());
     const createSignedFullUrl = async () => {
       const normalizedKey = (key || '').replace(/^\/+/, '');
+      
+      // Add timestamp to force fresh URL generation
+      const timestamp = Date.now();
+      console.log('[DEBUG] Request timestamp:', timestamp);
+      
       const resp = await fetch(
-        `${supabaseUrl}/storage/v1/object/sign/${bucket}/${encodeURIComponent(normalizedKey)}`,
+        `${supabaseUrl}/storage/v1/object/sign/${bucket}/${encodeURIComponent(normalizedKey)}?t=${timestamp}`,
         {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${serviceKey}`,
             'apikey': serviceKey,
             'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
           },
           body: JSON.stringify({ 
             expiresIn: expiresEffective
@@ -93,11 +101,21 @@ export async function GET(request) {
     // Generate signed URL directly - skip preflight validation to avoid token expiry
     // The browser will validate the token when it opens the URL
     const fullUrl = await createSignedFullUrl();
+    const expiresAtTime = Date.now() + expiresEffective * 1000;
     console.log('[DEBUG] Returning full URL (no preflight):', fullUrl);
+    console.log('[DEBUG] ExpiresEffective (seconds):', expiresEffective);
+    console.log('[DEBUG] ExpiresAt timestamp:', expiresAtTime);
+    console.log('[DEBUG] ExpiresAt in seconds from now:', (expiresAtTime - Date.now()) / 1000);
 
     return NextResponse.json({
       downloadUrl: fullUrl,
-      expiresAt: Date.now() + expiresEffective * 1000
+      expiresAt: expiresAtTime
+    }, {
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+      }
     });
   } catch (err) {
     return NextResponse.json(

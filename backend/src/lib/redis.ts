@@ -9,15 +9,20 @@ const redisOptions: RedisOptions = {
   enableReadyCheck: false,
 };
 
-const redisClient = new Redis(redisOptions);
+// Only create Redis client if REDIS_URL or REDIS_HOST is configured
+const redisClient = (process.env.REDIS_URL || process.env.REDIS_HOST) ? new Redis(redisOptions) : null;
 
-redisClient.on("connect", () => {
-  console.log("✅ Redis connected successfully");
-});
+if (redisClient) {
+  redisClient.on("connect", () => {
+    console.log("✅ Redis connected successfully");
+  });
 
-redisClient.on("error", (err) => {
-  console.error("❌ Redis connection error:", err);
-});
+  redisClient.on("error", (err) => {
+    console.warn("⚠️  Redis connection error (app will continue):", err.message);
+  });
+} else {
+  console.warn("⚠️  Redis not configured. Running without Redis.");
+}
 
 // Example type for payment events
 export interface PaymentEvent {
@@ -30,6 +35,10 @@ export interface PaymentEvent {
 
 // Publish helper
 export const publish = async (channel: string, payload: PaymentEvent) => {
+  if (!redisClient) {
+    console.warn("⚠️  Redis not available. Message not published.");
+    return;
+  }
   try {
     await redisClient.publish(channel, JSON.stringify(payload));
   } catch (err) {

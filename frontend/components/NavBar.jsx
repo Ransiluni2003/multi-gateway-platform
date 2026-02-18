@@ -19,6 +19,9 @@ export default function NavBar() {
         <Link href="/files" legacyBehavior>
           <a className={pathname === '/files' ? 'active' : ''} style={{ textDecoration: 'none', transition: 'background 0.2s' }}>Files</a>
         </Link>
+        <Link href="/download-test" legacyBehavior>
+          <a className={pathname === '/download-test' ? 'active' : ''} style={{ textDecoration: 'none', transition: 'background 0.2s' }}>Downloads</a>
+        </Link>
         <Link href="/traces" legacyBehavior>
           <a className={pathname === '/traces' ? 'active' : ''} style={{ textDecoration: 'none', transition: 'background 0.2s' }}>Traces</a>
         </Link>

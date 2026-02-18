@@ -1,6 +1,7 @@
 "use client";
 import React, { useState } from "react";
 import SupabaseDownloadButton from "../../components/SupabaseDownloadButton";
+import NavBar from "../../components/NavBar";
 
 export default function DownloadTestPage() {
   const [downloadLogs, setDownloadLogs] = useState([]);
@@ -38,15 +39,17 @@ export default function DownloadTestPage() {
   ];
 
   return (
-    <div style={{ padding: "20px", maxWidth: 1200, margin: "0 auto" }}>
-      <header style={{ marginBottom: 24 }}>
-        <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 8 }}>
-          Supabase Signed-URL Expiry Handling Demo
-        </h1>
-        <p style={{ color: "#6b7280" }}>
-          Test scenarios: Valid → Expired → Refresh → Graceful Fail
-        </p>
-      </header>
+    <div>
+      <NavBar />
+      <div style={{ padding: "20px", maxWidth: 1200, margin: "0 auto" }}>
+        <header style={{ marginBottom: 24 }}>
+          <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 8 }}>
+            Supabase Signed-URL Expiry Handling Demo
+          </h1>
+          <p style={{ color: "#6b7280" }}>
+            Test scenarios: Valid → Expired → Refresh → Graceful Fail
+          </p>
+        </header>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
         {/* Test Scenarios */}
@@ -188,6 +191,7 @@ export default function DownloadTestPage() {
           </div>
         </div>
       </div>
+    </div>
     </div>
   );
 }

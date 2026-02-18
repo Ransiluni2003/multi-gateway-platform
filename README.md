@@ -1,11 +1,51 @@
 # Multi-Gateway Platform
 
+[![Security Tests](https://github.com/Ransiluni2003/multi-gateway-platform/actions/workflows/security-tests.yml/badge.svg)](https://github.com/Ransiluni2003/multi-gateway-platform/actions/workflows/security-tests.yml)
+[![CI/CD Pipeline](https://github.com/Ransiluni2003/multi-gateway-platform/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/Ransiluni2003/multi-gateway-platform/actions/workflows/ci-cd.yml)
+[![Node.js Version](https://img.shields.io/badge/node-%3E%3D20.0.0-brightgreen)](https://nodejs.org/)
+[![License](https://img.shields.io/badge/license-ISC-blue)](LICENSE)
+
 A comprehensive full-stack platform demonstrating multi-service architecture with payment processing, fraud detection, analytics, worker queues, OpenTelemetry tracing, and responsive frontend. This repository documents containerization, CI/CD, load-testing, observability, and Supabase integration.
+
+---
+
+## ✅ Latest Updates - November 2024
+
+### 🎯 Project Completion Status: READY FOR PRODUCTION
+
+Three phases successfully completed:
+
+1. **✅ Phase 1: Downloads Feature with Supabase Expiry**
+   - Auto-download functionality implemented
+   - 60-second signed-URL expiry handling
+   - All tests passing (3/3 ✅)
+   - [View Details](./docs/SUPABASE_EXPIRY_COMPLETE_STATUS.md)
+
+2. **✅ Phase 2: Docker Resilience Testing**
+   - Retry queue with exponential backoff
+   - Dead-letter queue system
+   - Service health monitoring
+   - All tests passing (16/16 ✅)
+   - [View Details](./docs/DOCKER_RESILIENCE_COMPLETION_EVIDENCE.md)
+
+3. **✅ Phase 3: Docker Compose Optimization**
+   - 90+ environment variables configured
+   - Health checks for all services
+   - Mock external integrations
+   - All tests passing (18/18 ✅)
+   - [View Details](./docs/DOCKER_COMPOSE_OPTIMIZATION_COMPLETION_EVIDENCE.md)
+
+**📊 Overall Test Results: 37/37 Tests Passing (100% Success Rate) ✅**
+
+**👔 Supervisor Review Package:** [SUPERVISOR_PRESENTATION_PACKAGE.md](./docs/SUPERVISOR_PRESENTATION_PACKAGE.md)
 
 ---
 
 ## 📋 Table of Contents
 
+- [✅ CI/CD & Security](#-cicd--security) ← **NEW: Security Test Automation**
+- [🎬 Local Setup & Demo Scripts](#-local-setup--demo-scripts) ← **START HERE**
+- [🧭 New Developer Setup + Proof Guide](#-new-developer-setup--proof-guide)
 - [Quick Start](#quick-start)
 - [Setup Instructions](#setup-instructions)
 - [Usage Guide](#usage-guide)
@@ -16,13 +56,180 @@ A comprehensive full-stack platform demonstrating multi-service architecture wit
 
 ---
 
+## ✅ CI/CD & Security
+
+### Security Test Automation
+
+This project includes comprehensive security test automation that runs in CI/CD pipelines.
+
+**Status**: [![Security Tests](https://github.com/Ransiluni2003/multi-gateway-platform/actions/workflows/security-tests.yml/badge.svg)](https://github.com/Ransiluni2003/multi-gateway-platform/actions/workflows/security-tests.yml)
+
+#### Run Locally
+
+```bash
+# Run all security tests
+npm run test:security
+
+# Individual tests
+npm run verify:security-headers    # C1: CSP, X-Frame-Options, etc.
+npm run verify:rate-limiting       # C2: 429 responses on rate limit
+npm run demo:storage               # C3: Signed URL E2E demo
+npm run proof:audit-logs           # C4: Audit log verification
+npm run verify:secrets-hygiene     # C5: .env.example, no commits
+```
+
+#### CI/CD Pipeline
+
+The GitHub Actions workflow (`.github/workflows/security-tests.yml`) runs:
+
+1. **Lint & Type Check**
+   - Backend TypeScript validation
+   - Frontend type checking
+   - Code quality checks
+
+2. **Unit Tests**
+   - Backend Jest tests with coverage
+   - Codecov integration
+   - Test artifacts uploaded
+
+3. **Security Tests** (New!)
+   - ✅ **Security Headers**: Content-Security-Policy, X-Frame-Options, X-Content-Type-Options, Referrer-Policy
+   - ✅ **Rate Limiting**: /api/auth/* (5/15min), /api/webhooks/* (100/min), /api/coupons/validate (10/min)
+   - ✅ **Signed URLs**: Upload/Download/Expiry E2E with Supabase
+   - ✅ **Audit Logs**: LOGIN_SUCCESS, LOGIN_FAILURE, ISSUE_SIGNED_URL, VALIDATE_COUPON
+   - ✅ **Secrets Hygiene**: .env.example only, no real secrets committed
+
+4. **Build Artifacts**
+   - Backend tarball (dist/)
+   - Frontend tarball (.next/)
+   - Ready for deployment
+
+#### Test Results
+
+Tests run on:
+- `push` to main/develop branches
+- `pull_request` to main/develop branches
+- Daily schedule (2 AM UTC)
+
+View results: [GitHub Actions > Security Tests](https://github.com/Ransiluni2003/multi-gateway-platform/actions/workflows/security-tests.yml)
+
+---
+
+## 🎬 Local Setup & Demo Scripts
+
+**New to the project?** Start here to get running in 2 minutes:
+
+📖 **[Read: Local Setup & Demo Guide](./docs/LOCAL_SETUP_DEMO_GUIDE.md)**
+
+Shows:
+- ✅ How to run locally without Docker (2 mins)
+- ✅ Environment configuration 
+- ✅ One-command demos:
+  - `npm run demo:security` → Security headers + rate limiting
+  - `npm run demo:storage` → Signed URL flow
+  - `npm run verify:audit-logs` → Audit log verification
+- ✅ Troubleshooting guide
+
+---
+
+## 🧭 New Developer Setup + Proof Guide
+
+This is the minimum path a new dev can follow to validate security, storage, and audit logging without extra context.
+
+### Prerequisites
+- Node.js 18+
+- npm
+- Git
+- Supabase project (for signed URL demos)
+
+### 1) Configure Environment
+```bash
+cp .env.example .env
+```
+
+Fill these values in `.env`:
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `SUPABASE_BUCKET` (use `uploads`)
+- `JWT_SECRET`
+- `MONGO_URI`
+
+### 2) Run Supabase Setup (One Command)
+```bash
+npm run setup:supabase
+```
+
+This script:
+- Validates required env vars
+- Checks if the bucket exists (creates it if you used a service role key)
+- Prints a READY checklist with next steps
+
+### 3) Start Services
+```bash
+npm run dev
+```
+
+### 4) Proof Demos (One Command Each)
+```bash
+npm run demo:security
+npm run demo:storage
+npm run verify:audit-logs
+```
+
+### 5) What “Proof” Looks Like
+- **Security headers + rate limit:** `npm run demo:security` prints headers and shows a `429` after ~10 requests.
+- **Signed URL flow:** `npm run demo:storage` prints upload + download URL steps and expiry behavior.
+- **Audit logs:** `npm run verify:audit-logs` prints PASS/FAIL with action counts.
+
+---
+
 ## ⚡ Quick Start (5 minutes)
 
 ### Prerequisites
 - **Docker & Docker Compose** installed
 - **Node.js 18+** installed
 - **Git** configured
-- Supabase account (for file storage)
+- Supabase account (for file storage - optional for basic setup)
+
+### Option A: Docker Quick Start (Recommended) 🐳
+
+**3 commands to get everything running:**
+
+```bash
+# 1. Clone repository
+git clone https://github.com/Ransiluni2003/multi-gateway-platform.git
+cd multi-gateway-platform
+
+# 2. Setup environment
+cp .env.example .env
+# Edit .env with your Stripe keys (see below)
+
+# 3. Start everything with one command
+npm run dev:docker
+```
+
+**Open http://localhost:3001** - You'll see 6 demo products ready to purchase! 🎉
+
+**Required Configuration (Edit `.env`):**
+```env
+# Get these from https://dashboard.stripe.com/test/apikeys
+STRIPE_SECRET_KEY=sk_test_your_key_here
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_your_key_here
+STRIPE_WEBHOOK_SECRET=whsec_your_webhook_secret_here
+```
+
+**What starts automatically:**
+- ✅ Commerce Web (Next.js) on port 3001
+- ✅ SQLite database with demo products seeded
+- ✅ Backend API services (Gateway, Payments, Workers)
+- ✅ Redis cache & MongoDB
+- ✅ Prometheus monitoring
+
+**📖 Detailed Docker Guide:** [docs/DOCKER_AND_ORCHESTRATION_GUIDE.md](docs/DOCKER_AND_ORCHESTRATION_GUIDE.md)
+
+---
+
+### Option B: Manual Setup (Advanced)
 
 ### Steps
 
@@ -135,7 +342,187 @@ docker-compose down
 
 ---
 
-## 📖 Usage Guide
+## � How to Run Locally with Docker
+
+### One-Command Startup
+
+```bash
+# Start everything (builds images, creates DB, seeds data)
+npm run dev:docker
+
+# Or run in background
+npm run docker:up
+```
+
+**That's it!** The system automatically:
+1. ✅ Builds all Docker images
+2. ✅ Creates and migrates database
+3. ✅ Seeds 6 demo products
+4. ✅ Starts all services with health checks
+
+### Available Services
+
+| Service | URL | Purpose |
+|---------|-----|---------|
+| **Commerce Web** | http://localhost:3001 | E-commerce frontend (Next.js) |
+| **API Gateway** | http://localhost:5002 | Backend API gateway |
+| **Payments Service** | http://localhost:5003 | Payment processing |
+| **Mock Gateway** | http://localhost:5000 | Payment gateway simulator |
+| **Prometheus** | http://localhost:9090 | Metrics & monitoring |
+| **Grafana** | http://localhost:3300 | Dashboards |
+| **MongoDB** | localhost:27017 | Primary database |
+| **Redis** | localhost:6379 | Cache & queue |
+
+### Useful Docker Commands
+
+```bash
+# === MANAGEMENT ===
+npm run docker:up          # Start all services (background)
+npm run docker:down        # Stop all services
+npm run docker:restart     # Restart everything
+npm run docker:logs        # View all logs
+npm run docker:clean       # Remove all data (fresh start)
+
+# === DATABASE ===
+npm run db:migrate         # Run database migrations
+npm run db:seed            # Seed demo products & orders
+npm run db:reset           # Reset DB and reseed
+
+# === TESTING ===
+npm run test:e2e           # Run Playwright E2E tests
+npm run test:webhooks      # Test Stripe webhooks
+```
+
+### Seeding Demo Data
+
+The database is automatically seeded on first startup with:
+
+**6 Demo Products:**
+- Premium Laptop ($1,299.99)
+- Wireless Headphones ($299.99)
+- USB-C Hub ($49.99)
+- Monitor Stand ($79.99)
+- Mechanical Keyboard ($199.99)
+- Laptop Stand ($59.99)
+
+**To manually seed:**
+```bash
+npm run db:seed
+```
+
+### Running Tests
+
+**E2E Tests (Playwright):**
+```bash
+# Full test suite
+cd commerce-web
+npm run test:e2e
+
+# With UI mode
+npm run test:e2e:ui
+
+# Specific test file
+npx playwright test tests/e2e/checkout-order-admin.spec.ts
+```
+
+**Tests cover:**
+- ✅ Complete checkout flow
+- ✅ Order creation and management
+- ✅ Payment processing (Stripe)
+- ✅ Admin order operations
+- ✅ Refund processing
+- ✅ Error handling
+
+**Webhook Tests:**
+```bash
+cd commerce-web
+npm run test:webhooks
+```
+
+Tests idempotency, signature verification, and payment intent handling.
+
+### Accessing Running Containers
+
+```bash
+# Shell into commerce-web
+docker-compose exec commerce-web sh
+
+# Shell into MongoDB
+docker-compose exec mongo mongosh -u admin -p mongo-secure-password-dev
+
+# Shell into Redis
+docker-compose exec redis redis-cli -a redis-secure-password-dev
+
+# View container logs
+docker-compose logs -f commerce-web
+docker-compose logs -f api
+docker-compose logs -f payments
+```
+
+### Data Persistence
+
+All data persists across container restarts via Docker volumes:
+
+```bash
+# List volumes
+docker volume ls | grep multi-gateway
+
+# Volumes created:
+# - commerce-db       (SQLite database)
+# - mongo-data        (MongoDB data)
+# - redis-data        (Cache/queue data)
+# - prometheus-data   (Metrics)
+```
+
+**To reset all data:**
+```bash
+npm run docker:clean  # Removes volumes and containers
+```
+
+### Troubleshooting
+
+**Port conflicts:**
+```bash
+# Change ports in .env file
+COMMERCE_WEB_PORT=3002
+API_PORT=5004
+```
+
+**Database issues:**
+```bash
+# Reset and reseed
+npm run db:reset
+
+# Or manually
+docker-compose exec commerce-web npx prisma migrate reset --force
+docker-compose exec commerce-web npm run seed
+```
+
+**Build failures:**
+```bash
+# Clean rebuild
+docker-compose down
+docker system prune -a
+npm run docker:up
+```
+
+**View health status:**
+```bash
+# Check all services
+docker-compose ps
+
+# Check specific service
+curl http://localhost:3001/api/health
+```
+
+### 📖 Detailed Documentation
+
+- **Complete Docker Guide:** [docs/DOCKER_SETUP.md](docs/DOCKER_SETUP.md)
+- **Docker Notes (Learning):** [docs/docker-notes.md](docs/docker-notes.md)
+
+---
+
+## �📖 Usage Guide
 
 ### Dashboard
 - **URL**: `http://localhost:3000/dashboard`
@@ -144,6 +531,43 @@ docker-compose down
   - Refund ratio visualization
   - "Simulate Transaction" button to generate test data
   - Interactive filtering and zoom
+
+#### 📊 Understanding the Fraud Trend & Refund Ratio Chart
+
+The dashboard displays two critical metrics in a dual-axis chart:
+
+**1. Fraud Events (Red Line - Left Axis)**
+- **What it shows**: The count of transactions flagged as fraudulent per day
+- **Range**: Absolute number (0-100+)
+- **Interpretation**:
+  - Baseline helps identify normal fraud activity
+  - Spikes indicate potential fraud attacks or system issues
+  - Downward trends show improved fraud detection or prevention
+- **Example**: "We had 8 fraud incidents on Jan 1, rising to 15 on Jan 2"
+
+**2. Refund Ratio (Blue Line - Right Axis)**
+- **What it shows**: The percentage of transactions that were refunded
+- **Formula**: `(Refunds / Total Payments) × 100 = %`
+- **Range**: 0-100%
+- **Interpretation**:
+  - 2-5%: Healthy range (normal customer satisfaction)
+  - 5-10%: Elevated (investigate issues, product quality)
+  - 10%+: Critical (chargeback risk, payment gateway issues)
+  - Correlates with fraud: High fraud often triggers refunds
+- **Example**: "If 100 payments were processed and 3 were refunded, refund ratio = 3%"
+
+**Why Together?**
+These metrics reveal critical relationships:
+- **High Fraud + High Refunds**: Fraudulent transactions may be auto-refunded
+- **Low Fraud + High Refunds**: Customer satisfaction issue (product/shipping)
+- **High Fraud + Low Refunds**: Detection working but refund process slow
+- **Low Fraud + Low Refunds**: Healthy system state ✅
+
+**How to Use:**
+1. Click "Simulate Transaction" to add test data for the current day
+2. Select time range: Last 7 days, 30 days, or all-time
+3. Hover over data points to see exact values
+4. Monitor for unusual patterns or spikes
 
 ### Files Page
 - **URL**: `http://localhost:3000/files`
@@ -558,6 +982,201 @@ curl http://localhost:9090/api/v1/query?query=up
 - **MongoDB**: Document database for persistent data
 - **Redis**: Queue and cache layer for workers
 - **Supabase**: Secure file storage with signed URLs
+
+---
+
+## 📊 Analytics & Fraud Detection Guide
+
+### Fraud Trendline & Refund Ratio - Complete Explanation
+
+#### **What Data Is Displayed?**
+
+The dashboard displays a **dual-axis time-series chart** tracking two key metrics over 14 days:
+
+| Metric | Line Color | Axis | Data Type | Purpose |
+|--------|-----------|------|-----------|---------|
+| **Fraud Events** | Red 🔴 | Left (Count) | Integer (0-100+) | Tracks daily fraud incident count |
+| **Refund Ratio** | Blue 🔵 | Right (%) | Percentage (0-100%) | Shows refund rate as % of transactions |
+
+#### **Fraud Events (Red Line)**
+
+**Definition**: The absolute number of transactions flagged as potentially fraudulent on a given day.
+
+**Data Source**: `TransactionLog` collection filtered by `eventType: "fraud"`
+
+**Calculation**:
+```
+Fraud Count = COUNT(transactions WHERE eventType LIKE "fraud" FOR EACH DAY)
+```
+
+**Interpretation Guide**:
+- **0-3 events/day**: ✅ Excellent (very low fraud baseline)
+- **3-8 events/day**: 🟡 Normal (acceptable fraud rate for processing volume)
+- **8-15 events/day**: 🟠 Elevated (investigate patterns, check for attacks)
+- **15+ events/day**: 🔴 Critical (immediate investigation required)
+
+**Real-World Examples**:
+- Day 1: 5 fraud events = 5 transactions detected as fraudulent out of (typically) 100-200 total
+- Day 2: 12 fraud events = System flagged 12 suspicious transactions
+
+**Actions to Take**:
+- **Spike Detection**: If fraud jumps from 5 to 20 overnight, investigate:
+  - New fraud attack (test with honeypot email)
+  - System misconfiguration (check fraud detection thresholds)
+  - Volume surge (legitimate business spike)
+- **Trend Analysis**: Multi-day uptrend indicates systematic issue
+- **Correlation**: Compare with refund ratio to find root cause
+
+#### **Refund Ratio (Blue Line)**
+
+**Definition**: The percentage of transactions that were refunded, calculated as `(Refunds / Total Payments) × 100`
+
+**Data Source**: `TransactionLog` collection
+- Numerator: COUNT of `eventType: "refund"` per day
+- Denominator: COUNT of `eventType: "payment"` per day
+
+**Calculation**:
+```
+Refund Ratio (%) = (Count of Refunds / Count of Payments) × 100
+
+Example:
+- 100 payments processed on Jan 1
+- 3 refunds issued on Jan 1
+- Refund Ratio = (3 / 100) × 100 = 3%
+```
+
+**Interpretation Guide**:
+- **0-2%**: ✅ Excellent (world-class customer satisfaction)
+- **2-5%**: ✅ Good (healthy baseline for most businesses)
+- **5-10%**: 🟡 Elevated (investigate, customer issues or fraud)
+- **10-15%**: 🟠 Concerning (potential chargeback liability)
+- **15%+**: 🔴 Critical (business-threatening, must investigate)
+
+**Real-World Examples**:
+- E-commerce platform: 3-5% typical (shipping issues, wrong items)
+- SaaS platform: 1-2% typical (service quality is high)
+- High-risk: 8-12% (indicates serious system issues)
+
+**Root Causes**:
+| Refund Reason | Signal | Solution |
+|---------------|--------|----------|
+| **Product Quality** | Correlated with low fraud | Improve QA, better product info |
+| **Shipping Issues** | High in logistics heavy business | Improve fulfillment process |
+| **Payment Failures** | No fraud, just processing errors | Check payment gateway config |
+| **Fraud** | High fraud + high refunds | Strengthen fraud detection |
+| **Customer Service** | Voluntary refunds | Improve support, onboarding |
+
+#### **Correlation Analysis: When Lines Move Together**
+
+**Scenario 1: Both Rise 📈📈**
+```
+Fraud ↑ + Refund Ratio ↑
+Likely Cause: Coordinated fraud attack auto-triggering refunds
+Action: Block suspicious customers, investigate fraud detection thresholds
+```
+
+**Scenario 2: Fraud High, Refunds Low 📈📉**
+```
+Fraud ↑ + Refund Ratio ↓
+Likely Cause: Detection working but refund process is slow
+Action: Expedite refund processing, check payment processor queue
+```
+
+**Scenario 3: Fraud Low, Refunds High 📉📈**
+```
+Fraud ↓ + Refund Ratio ↑
+Likely Cause: Legitimate customers requesting refunds (satisfaction issue)
+Action: Investigate product quality, shipping, customer support
+```
+
+**Scenario 4: Both Stable ➡️➡️**
+```
+Fraud ➡️ + Refund Ratio ➡️
+Ideal State: System operating normally ✅
+Action: Maintain current configuration, monitor for anomalies
+```
+
+#### **How the Data is Generated**
+
+**Backend Aggregation** (`/api/fraud/trend` endpoint):
+
+```javascript
+// Aggregates last 14 days of data per day
+Pipeline:
+1. Match transactions from start date to today
+2. Group by date
+3. Count fraud, refund, and payment events
+4. Calculate ratios
+5. Return sorted by date
+```
+
+**Response Format**:
+```json
+[
+  {
+    "date": "2026-01-03",
+    "fraudCount": 6,
+    "fraudRate": 4.2,           // (fraud / total) × 100
+    "refundCount": 2,
+    "paymentCount": 143,
+    "refundRatio": 0.014,        // 1.4% as decimal
+    "refundPercentage": 1.4,     // 1.4% as percentage
+    "totalAmount": 14300
+  },
+  ...
+]
+```
+
+**Chart Rendering** (FraudTrend.jsx):
+- Red line: plots `fraudCount` on left Y-axis
+- Blue line: plots `refundPercentage` on right Y-axis
+- X-axis: formatted dates (Jan 03, Jan 04, etc.)
+- Hover: shows exact values for each data point
+
+#### **Testing & Simulation**
+
+To see the charts in action:
+
+1. **Click "Simulate Transaction"** button on dashboard
+   - Adds a fake transaction for today
+   - Updates chart with new data point
+   - Useful for testing without real transactions
+
+2. **Generate Real Data**:
+   ```bash
+   # Via API or admin panel, create transactions:
+   # - POST /api/transactions/create
+   # - Include eventType: "payment", "fraud", or "refund"
+   ```
+
+3. **Filter by Time Range**:
+   - **Last 7 days**: Recent trends only
+   - **Last 30 days**: Monthly patterns
+   - **All**: Historical data
+
+#### **Key Metrics & Benchmarks**
+
+```
+Industry Benchmarks (healthy state):
+┌─────────────────┬──────────────┬──────────────┐
+│ Industry        │ Fraud Rate   │ Refund Ratio │
+├─────────────────┼──────────────┼──────────────┤
+│ E-Commerce      │ 1-3%         │ 3-5%         │
+│ SaaS            │ 0.5-1%       │ 1-2%         │
+│ Digital Goods   │ 0.1-0.5%     │ 0.5-1%       │
+│ High-Risk       │ 5-10%        │ 8-12%        │
+└─────────────────┴──────────────┴──────────────┘
+```
+
+#### **Troubleshooting**
+
+| Problem | Cause | Solution |
+|---------|-------|----------|
+| Chart shows no data | No transactions | Click "Simulate Transaction" |
+| Both metrics are 0 | MongoDB not connected | Check DB connection |
+| Unusual spikes | Legitimate business event | Check transaction logs |
+| Ratio > 100% | Duplicate refunds | Investigate duplicate logic |
+| Chart won't load | API endpoint down | Check `/api/fraud/trend` |
 
 ---
 

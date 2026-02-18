@@ -2,8 +2,16 @@ import express, { Request, Response, NextFunction } from "express";
 import dotenv from "dotenv";
 import rateLimit from "express-rate-limit";
 import path from "path";
+import mongoose from "mongoose";
+
+// IMPORTANT: Load .env FIRST before any other imports that use it
+dotenv.config({
+  path: path.resolve(process.cwd(), ".env"),
+});
+
 import cors from "cors";
 import helmet from "helmet";
+import cookieParser from "cookie-parser";
 import { v4 as uuidv4 } from "uuid";
 import axios from "axios";
 import * as Sentry from "@sentry/node";
@@ -16,22 +24,33 @@ import tracesRoutes from './routes/tracesRoutes';
 import fraudRoutes from "./routes/fraudRoutes";
 import analyticsRouter from "./routes/analytics";
 import { traceCapture } from "./middleware/traceCapture";
-
-// Load .env (ONLY from backend/.env)
-dotenv.config({
-  path: path.resolve(__dirname, "../.env"),
-});
+import { recordSpan, withSpanTracking } from "./utils/spanTracker";
 
 // Local Imports
 import connectMongo from "./config/db";
 import authRoutes from "./routes/authRoutes";
 import errorHandler from "./middleware/errorHandler";
 import securityRoutes from "./routes/securityRoutes";
+import securityAdminRoutes from "./routes/securityAdminRoutes";
 import jobsRoutes from "./routes/jobsRoutes";
 import filesRoutes from "./routes/filesRoutes";
+import fileAccessRoutes from "./routes/fileAccessRoutes";
+import bundleRoutes from "./routes/bundleRoutes";
+import mockPaymentRoutes from "./routes/mockPaymentRoutes";
+import auditRoutes from "./routes/auditRoutes";
+import rateLimitMonitorRoutes from "./routes/rateLimitMonitorRoutes";
+import couponRoutes from "./routes/couponRoutes";
 import { initRedis, redisClient } from "./config/redisClient";
 import { getPaymentDetails } from "./services/paymentsService";
 import axiosInstance from "./utils/axiosRetryClient";
+import { logAuditEvent } from "./utils/audit";
+import { structuredLogger } from "./utils/structuredLogger";
+const requestIdMiddleware = require("./middleware/requestId");
+import { requestLogger } from "./middleware/requestLogger";
+// Queues and monitoring
+import QueueManager from "./queues/queueManager";
+import { createQueueMetricsRouter } from "./queues/metricsRouter";
+import { PaymentQueueHandler, NotificationQueueHandler, WebhookQueueHandler } from "./queues/handlers";
 
 // ==========================
 // Validate Supabase Variables
@@ -47,6 +66,18 @@ if (!supabaseUrl || !supabaseKey) {
 // ==========================
 export const supabase = createClient(supabaseUrl, supabaseKey);
 const STORAGE_BUCKET = process.env.SUPABASE_BUCKET || "uploads";
+const DEFAULT_ALLOWED_UPLOAD_TYPES = [
+  "application/octet-stream",
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+  "text/plain",
+];
+const ALLOWED_UPLOAD_TYPES = (process.env.UPLOAD_ALLOWED_MIME_TYPES || "")
+  .split(",")
+  .map((entry) => entry.trim().toLowerCase())
+  .filter(Boolean);
+const UPLOAD_MAX_BYTES = Number(process.env.UPLOAD_MAX_BYTES || 10 * 1024 * 1024);
 
 // ==========================
 // Connect MongoDB
@@ -80,12 +111,26 @@ if (logtailToken) {
 const app = express();
 // Health endpoint for load testing (must be after app is declared)
 app.use(express.json());
+app.use(cookieParser());
+
+// Request ID Middleware (must come before logging)
+app.use(requestIdMiddleware);
+
+// Request Logger Middleware
+app.use(requestLogger);
+
+// Initialize request start time for span tracking
+app.use((req: Request, res: Response, next: NextFunction) => {
+  (req as any).startTime = Date.now();
+  next();
+});
+
 // Capture lightweight traces for the admin trace viewer
 app.use(traceCapture);
 app.use(helmet());
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN || "http://localhost:3000",
+    origin: ["http://localhost:3000", "http://localhost:3001"],
     credentials: true,
   })
 );
@@ -94,7 +139,7 @@ app.use(
 app.use(
   rateLimit({
     windowMs: 60 * 1000,
-    max: 100,
+    max: 10000,
     message: { message: "Too many requests. Try again later." },
   })
 );
@@ -107,9 +152,9 @@ Sentry.init({ dsn: process.env.SENTRY_DSN || "" });
 // Trace ID Middleware
 // ==========================
 app.use((req: Request, res: Response, next: NextFunction) => {
-  (req as any).traceId = uuidv4();
-  res.setHeader("X-Trace-ID", (req as any).traceId || "unknown");
-  console.log(`[${(req as any).traceId}] ${req.method} ${req.url}`);
+  // Reuse requestId as traceId for consistency
+  (req as any).traceId = (req as any).requestId || uuidv4();
+  res.setHeader("X-Trace-ID", (req as any).traceId);
   next();
 });
 
@@ -121,10 +166,53 @@ app.use("/api/fraud", fraudRoutes);
 // ==========================
 app.use("/api/auth", authRoutes);
 app.use("/api/security", securityRoutes);
+app.use("/api/admin/security", securityAdminRoutes);
+app.use("/api/rate-limit-monitor", rateLimitMonitorRoutes);
 app.use("/api/jobs", jobsRoutes);
 app.use("/api/files", filesRoutes);
+app.use("/api/files", fileAccessRoutes);
 app.use("/api/traces", tracesRoutes);
 app.use("/api/fraud", fraudRoutes);
+app.use("/api", bundleRoutes);
+app.use("/api", mockPaymentRoutes);
+app.use("/api", auditRoutes);
+app.use("/api", couponRoutes);
+
+// ==========================
+// Queues: init + metrics endpoints
+// ==========================
+const redisUrl = process.env.REDIS_URL || "redis://:redis-secure-password-dev@localhost:6379";
+const queueManager = new QueueManager(redisUrl, logger);
+// Register queues
+new PaymentQueueHandler(queueManager, logger);
+new NotificationQueueHandler(queueManager, logger);
+new WebhookQueueHandler(queueManager, logger);
+// Expose /queue/* endpoints
+app.use("/queue", createQueueMetricsRouter(queueManager, logger));
+
+// Minimal forwarding to payments service to support E2E test on port 5000
+app.post("/api/payments/pay", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const start = Date.now();
+    const resp = await axiosInstance.post("http://localhost:4001/api/payments/pay", req.body, {
+      headers: {
+        // Forward trace header if present; ensure one is always set
+        "x-trace-id": (req as any).traceId || req.headers["x-trace-id"] || "unknown",
+      },
+      timeout: 10000,
+    });
+
+    // Record a span representing the external service call
+    recordSpan(req as any, "Call payments service", "payments", Date.now() - start, resp.status);
+
+    // Preserve the trace id header on the response
+    res.setHeader("X-Trace-ID", (req as any).traceId || "unknown");
+    res.status(resp.status).json(resp.data);
+  } catch (err: any) {
+    recordSpan(req as any, "Payments call failed", "payments", 1, 500);
+    next(err);
+  }
+});
 app.use("/api/analytics", analyticsRouter);
 
 // ==========================
@@ -149,6 +237,38 @@ app.get("/api/health/services", async (req: Request, res: Response) => {
 app.get("/api/health", (req: Request, res: Response) =>
   res.json({ status: "OK", uptime: process.uptime() })
 );
+
+app.get("/api/ready", async (req: Request, res: Response) => {
+  const dbReady = mongoose.connection.readyState === 1;
+
+  let storageReady = false;
+  try {
+    const { error } = await supabase.storage.from(STORAGE_BUCKET).list("", { limit: 1 });
+    storageReady = !error;
+  } catch {
+    storageReady = false;
+  }
+
+  const ready = dbReady && storageReady;
+
+  res.status(ready ? 200 : 503).json({
+    status: ready ? "ready" : "degraded",
+    checks: {
+      database: dbReady ? "ready" : "down",
+      storage: storageReady ? "ready" : "down",
+    },
+    timestamp: new Date().toISOString(),
+  });
+});
+
+app.get("/api/version", (req: Request, res: Response) => {
+  res.json({
+    service: "gateway-backend",
+    version: process.env.APP_VERSION || "1.0.0",
+    gitSha: process.env.GIT_SHA || process.env.BUILD_SHA || "unknown",
+    buildTime: process.env.BUILD_TIME || "unknown",
+  });
+});
 
 // Root endpoint
 app.get("/", (req: Request, res: Response) =>
@@ -182,8 +302,31 @@ app.get("/metrics", async (req: Request, res: Response) => {
 app.post("/api/files/upload-url", async (req: Request, res: Response) => {
   try {
     const { filename, contentType } = req.body;
+    const rawSize = req.body?.sizeBytes ?? req.body?.size ?? req.body?.contentLength;
     if (!filename || !contentType)
       return res.status(400).json({ error: "filename and contentType required" });
+
+    const allowedTypes = ALLOWED_UPLOAD_TYPES.length
+      ? ALLOWED_UPLOAD_TYPES
+      : DEFAULT_ALLOWED_UPLOAD_TYPES;
+    const normalizedContentType = String(contentType).toLowerCase();
+    if (!allowedTypes.includes(normalizedContentType)) {
+      return res.status(400).json({
+        error: "contentType not allowed",
+        allowedTypes,
+      });
+    }
+
+    const sizeBytes = Number(rawSize);
+    if (!Number.isFinite(sizeBytes) || sizeBytes <= 0) {
+      return res.status(400).json({ error: "sizeBytes required" });
+    }
+    if (sizeBytes > UPLOAD_MAX_BYTES) {
+      return res.status(413).json({
+        error: "file too large",
+        maxBytes: UPLOAD_MAX_BYTES,
+      });
+    }
 
     const fileKey = `uploads/${new Date().toISOString().slice(0, 10)}/${uuidv4()}-${filename}`;
     const { data, error } = await supabase.storage
@@ -193,7 +336,25 @@ app.post("/api/files/upload-url", async (req: Request, res: Response) => {
     if (error) throw error;
 
     logger.info("Generated Supabase signed upload URL", { fileKey });
-    res.json({ uploadUrl: data.signedUrl, key: fileKey });
+    await logAuditEvent({
+      action: "ISSUE_SIGNED_URL",
+      status: "success",
+      ip: req.ip,
+      userAgent: req.headers["user-agent"],
+      details: {
+        type: "upload",
+        key: fileKey,
+        contentType: normalizedContentType,
+        sizeBytes,
+        scanStatus: "pending",
+      },
+    });
+    res.json({
+      uploadUrl: data.signedUrl,
+      key: fileKey,
+      scanStatus: "pending",
+      maxBytes: UPLOAD_MAX_BYTES,
+    });
   } catch (err: any) {
     logger.error("Supabase upload URL failed", { error: err.message });
     Sentry.captureException(err);
@@ -234,6 +395,13 @@ app.get("/api/files/download-url", async (req: Request, res: Response) => {
         if (!isNaN(p)) expiresSeconds = Math.max(5, Math.min(p, 60 * 60));
       }
       const expiresAt = Date.now() + expiresSeconds * 1000;
+      await logAuditEvent({
+        action: "ISSUE_SIGNED_URL",
+        status: "success",
+        ip: req.ip,
+        userAgent: req.headers["user-agent"],
+        details: { type: "download", key, expiresSeconds, demo: true },
+      });
       return res.json({ downloadUrl, expiresAt });
     }
     // Optional `expires` query param (seconds). Clamp to safe bounds (1 minute - 1 hour).
@@ -279,6 +447,13 @@ app.get("/api/files/download-url", async (req: Request, res: Response) => {
     }
 
     logger.info("Generated Supabase signed download URL", { key, expiresSeconds, expiresAt });
+    await logAuditEvent({
+      action: "ISSUE_SIGNED_URL",
+      status: "success",
+      ip: req.ip,
+      userAgent: req.headers["user-agent"],
+      details: { type: "download", key, expiresSeconds },
+    });
     res.json({ downloadUrl: signedUrl, expiresAt });
   } catch (err: any) {
     logger.error("Supabase download URL failed", { error: err.message });
@@ -312,6 +487,7 @@ app.use(errorHandler);
   const server = app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
     logger.info(`Server started on port ${PORT}`);
+    console.log("   📌 For full functionality, use: docker compose up -d");
   });
 
   process.on("SIGTERM", async () => {
@@ -331,3 +507,5 @@ app.use(errorHandler);
     });
   });
 })();
+
+export default app;

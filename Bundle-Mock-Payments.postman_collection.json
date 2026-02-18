@@ -1,0 +1,590 @@
+{
+  "info": {
+    "name": "Bundle Products + Mock Payments",
+    "_postman_id": "bundle-mock-payments-collection",
+    "description": "Complete API collection for Bundle Products and Mock Payment Gateway features",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "bundle_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "transaction_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "order_id",
+      "value": "order_test_123",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Bundle Products",
+      "item": [
+        {
+          "name": "Create Bundle",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status is 201\", function() {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test(\"Bundle ID is returned\", function() {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.id).to.exist;",
+                  "  pm.environment.set(\"bundle_id\", json.id);",
+                  "});",
+                  "",
+                  "pm.test(\"Pricing is calculated\", function() {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.pricing).to.exist;",
+                  "  pm.expect(json.pricing.total).to.be.a('number');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Starter Pack\",\n  \"description\": \"Essential items to get started\",\n  \"items\": [\n    {\n      \"productId\": \"prod_123\",\n      \"productName\": \"Widget A\",\n      \"quantity\": 2,\n      \"unitPrice\": 19.99\n    },\n    {\n      \"productId\": \"prod_456\",\n      \"productName\": \"Widget B\",\n      \"quantity\": 1,\n      \"unitPrice\": 39.99\n    }\n  ],\n  \"discounts\": [\n    {\n      \"discountType\": \"percentage\",\n      \"discountValue\": 10,\n      \"priority\": 1\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/bundles",
+              "host": ["{{base_url}}"],
+              "path": ["api", "bundles"]
+            }
+          }
+        },
+        {
+          "name": "List Bundles",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status is 200\", function() {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Returns bundles array\", function() {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.bundles).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/bundles?status=active",
+              "host": ["{{base_url}}"],
+              "path": ["api", "bundles"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "active"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Bundle Details",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status is 200\", function() {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Bundle has items\", function() {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.items).to.be.an('array');",
+                  "  pm.expect(json.items.length).to.be.above(0);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/bundles/{{bundle_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "bundles", "{{bundle_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Calculate Bundle Price",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quantity\": 3,\n  \"taxRate\": 0.08\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/bundles/{{bundle_id}}/calculate-price",
+              "host": ["{{base_url}}"],
+              "path": ["api", "bundles", "{{bundle_id}}", "calculate-price"]
+            }
+          }
+        },
+        {
+          "name": "Generate Invoice",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quantity\": 1,\n  \"taxRate\": 0.08\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/bundles/{{bundle_id}}/invoice",
+              "host": ["{{base_url}}"],
+              "path": ["api", "bundles", "{{bundle_id}}", "invoice"]
+            }
+          }
+        },
+        {
+          "name": "Update Bundle",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Starter Pack\",\n  \"status\": \"active\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/bundles/{{bundle_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "bundles", "{{bundle_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Delete Bundle",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/bundles/{{bundle_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "bundles", "{{bundle_id}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Mock Payments - Success Flow",
+      "item": [
+        {
+          "name": "Authorize Payment (Success)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status is 200\", function() {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Transaction ID is returned\", function() {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.transaction_id).to.exist;",
+                  "  pm.environment.set(\"transaction_id\", json.transaction_id);",
+                  "});",
+                  "",
+                  "pm.test(\"Status is success\", function() {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.status).to.eql(\"success\");",
+                  "  pm.expect(json.success).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 69.11,\n  \"currency\": \"USD\",\n  \"payment_method\": {\n    \"card_number\": \"4242424242424242\",\n    \"exp_month\": \"12\",\n    \"exp_year\": \"2027\",\n    \"cvv\": \"123\"\n  },\n  \"orderId\": \"{{order_id}}\",\n  \"metadata\": {\n    \"customer_id\": \"cust_123\",\n    \"bundle_id\": \"{{bundle_id}}\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/payments/mock/authorize",
+              "host": ["{{base_url}}"],
+              "path": ["api", "payments", "mock", "authorize"]
+            }
+          }
+        },
+        {
+          "name": "Get Transaction Details",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status is 200\", function() {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Transaction has events\", function() {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.events).to.be.an('array');",
+                  "  pm.expect(json.events.length).to.be.above(0);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/payments/mock/transactions/{{transaction_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "payments", "mock", "transactions", "{{transaction_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Capture Payment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status is 200\", function() {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Status is captured\", function() {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.status).to.eql(\"captured\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"transactionId\": \"{{transaction_id}}\",\n  \"amount\": 69.11\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/payments/mock/capture",
+              "host": ["{{base_url}}"],
+              "path": ["api", "payments", "mock", "capture"]
+            }
+          }
+        },
+        {
+          "name": "Refund Payment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status is 200\", function() {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Status is refunded\", function() {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.status).to.eql(\"refunded\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"transactionId\": \"{{transaction_id}}\",\n  \"amount\": 69.11,\n  \"reason\": \"customer_request\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/payments/mock/refund",
+              "host": ["{{base_url}}"],
+              "path": ["api", "payments", "mock", "refund"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Mock Payments - Failure Scenarios",
+      "item": [
+        {
+          "name": "Card Declined",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status is 400\", function() {",
+                  "  pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test(\"Error code is card_declined\", function() {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.error_code).to.eql(\"card_declined\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 50.00,\n  \"currency\": \"USD\",\n  \"payment_method\": {\n    \"card_number\": \"4000000000000002\",\n    \"exp_month\": \"12\",\n    \"exp_year\": \"2027\",\n    \"cvv\": \"123\"\n  },\n  \"orderId\": \"{{order_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/payments/mock/authorize",
+              "host": ["{{base_url}}"],
+              "path": ["api", "payments", "mock", "authorize"]
+            }
+          }
+        },
+        {
+          "name": "Insufficient Funds",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Error code is insufficient_funds\", function() {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.error_code).to.eql(\"insufficient_funds\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 50.00,\n  \"currency\": \"USD\",\n  \"payment_method\": {\n    \"card_number\": \"4000000000009995\",\n    \"exp_month\": \"12\",\n    \"exp_year\": \"2027\",\n    \"cvv\": \"123\"\n  },\n  \"orderId\": \"{{order_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/payments/mock/authorize",
+              "host": ["{{base_url}}"],
+              "path": ["api", "payments", "mock", "authorize"]
+            }
+          }
+        },
+        {
+          "name": "Expired Card",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 50.00,\n  \"currency\": \"USD\",\n  \"payment_method\": {\n    \"card_number\": \"4000000000000069\",\n    \"exp_month\": \"12\",\n    \"exp_year\": \"2027\",\n    \"cvv\": \"123\"\n  },\n  \"orderId\": \"{{order_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/payments/mock/authorize",
+              "host": ["{{base_url}}"],
+              "path": ["api", "payments", "mock", "authorize"]
+            }
+          }
+        },
+        {
+          "name": "Incorrect CVC",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 50.00,\n  \"currency\": \"USD\",\n  \"payment_method\": {\n    \"card_number\": \"4000000000000127\",\n    \"exp_month\": \"12\",\n    \"exp_year\": \"2027\",\n    \"cvv\": \"123\"\n  },\n  \"orderId\": \"{{order_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/payments/mock/authorize",
+              "host": ["{{base_url}}"],
+              "path": ["api", "payments", "mock", "authorize"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Transaction Management",
+      "item": [
+        {
+          "name": "List All Transactions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/payments/mock/transactions?limit=50",
+              "host": ["{{base_url}}"],
+              "path": ["api", "payments", "mock", "transactions"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "50"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Filter by Status (Success)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/payments/mock/transactions?status=success",
+              "host": ["{{base_url}}"],
+              "path": ["api", "payments", "mock", "transactions"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "success"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Filter by Date Range",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/payments/mock/transactions?from_date=2026-01-01&to_date=2026-01-31",
+              "host": ["{{base_url}}"],
+              "path": ["api", "payments", "mock", "transactions"],
+              "query": [
+                {
+                  "key": "from_date",
+                  "value": "2026-01-01"
+                },
+                {
+                  "key": "to_date",
+                  "value": "2026-01-31"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Filter by Order ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/payments/mock/transactions?order_id={{order_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "payments", "mock", "transactions"],
+              "query": [
+                {
+                  "key": "order_id",
+                  "value": "{{order_id}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Export to CSV",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/payments/mock/transactions/export/csv",
+              "host": ["{{base_url}}"],
+              "path": ["api", "payments", "mock", "transactions", "export", "csv"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
