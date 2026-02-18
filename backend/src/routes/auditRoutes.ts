@@ -2,6 +2,8 @@ import express, { Request, Response } from "express";
 import { protect, authorizeRoles, AuthRequest } from "../middleware/authMiddleware";
 import { AuditLog } from "../models/AuditLog";
 import { Parser } from "json2csv";
+import { logAuditEvent } from "../utils/audit";
+import logger from "../utils/logger";
 
 const router = express.Router();
 
@@ -39,14 +41,51 @@ router.get("/audit-logs", protect, authorizeRoles("admin"), async (req: AuthRequ
       filter.status = req.query.status;
     }
     
-    // Date range filter
+    // Date range filter with validation
+    let startDate: Date | undefined;
+    let endDate: Date | undefined;
+    const MAX_QUERY_WINDOW_DAYS = 90;
+    
     if (req.query.startDate || req.query.endDate) {
       filter.createdAt = {};
       if (req.query.startDate && typeof req.query.startDate === "string") {
-        filter.createdAt.$gte = new Date(req.query.startDate);
+        startDate = new Date(req.query.startDate);
+        filter.createdAt.$gte = startDate;
       }
       if (req.query.endDate && typeof req.query.endDate === "string") {
-        filter.createdAt.$lte = new Date(req.query.endDate);
+        endDate = new Date(req.query.endDate);
+        filter.createdAt.$lte = endDate;
+      }
+      
+      // Validate date range window
+      if (startDate && endDate) {
+        const windowMs = endDate.getTime() - startDate.getTime();
+        const maxWindowMs = MAX_QUERY_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+        
+        if (windowMs > maxWindowMs) {
+          return res.status(400).json({
+            error: "Date range too large",
+            message: `Query window cannot exceed ${MAX_QUERY_WINDOW_DAYS} days. Your request spans ${Math.ceil(windowMs / (24 * 60 * 60 * 1000))} days.`,
+            maxDays: MAX_QUERY_WINDOW_DAYS,
+          });
+        }
+      }
+    }
+    
+    // PERFORMANCE: For large datasets, require date range to prevent slow queries
+    const LARGE_DATASET_THRESHOLD = 10000;
+    if (!startDate && !endDate) {
+      // Check if dataset is large (use countDocuments with a limit)
+      const estimatedCount = await AuditLog.countDocuments().limit(LARGE_DATASET_THRESHOLD + 1);
+      
+      if (estimatedCount > LARGE_DATASET_THRESHOLD) {
+        // Dataset is large, require date range
+        return res.status(400).json({
+          error: "Date range required",
+          message: `The audit log dataset is large (${estimatedCount}+ records). Please specify startDate and endDate query parameters to narrow your search.`,
+          hint: "Example: ?startDate=2024-01-01&endDate=2024-01-31",
+          maxWindowDays: MAX_QUERY_WINDOW_DAYS,
+        });
       }
     }
 
@@ -106,21 +145,86 @@ router.get("/audit-logs/export", protect, authorizeRoles("admin"), async (req: A
       filter.status = req.query.status;
     }
     
+    // Date range filter with validation
+    let startDate: Date | undefined;
+    let endDate: Date | undefined;
+    
     if (req.query.startDate || req.query.endDate) {
       filter.createdAt = {};
       if (req.query.startDate && typeof req.query.startDate === "string") {
-        filter.createdAt.$gte = new Date(req.query.startDate);
+        startDate = new Date(req.query.startDate);
+        filter.createdAt.$gte = startDate;
       }
       if (req.query.endDate && typeof req.query.endDate === "string") {
-        filter.createdAt.$lte = new Date(req.query.endDate);
+        endDate = new Date(req.query.endDate);
+        filter.createdAt.$lte = endDate;
       }
     }
 
+    // HARDENING: Enforce max export window (14 days)
+    const MAX_EXPORT_WINDOW_DAYS = 14;
+    const maxWindowMs = MAX_EXPORT_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+    
+    if (startDate && endDate) {
+      const windowMs = endDate.getTime() - startDate.getTime();
+      if (windowMs > maxWindowMs) {
+        logger.warn("Export rejected: date range exceeds limit", {
+          adminId: req.user?._id,
+          startDate,
+          endDate,
+          requestedDays: Math.ceil(windowMs / (24 * 60 * 60 * 1000)),
+          maxDays: MAX_EXPORT_WINDOW_DAYS,
+        });
+        
+        return res.status(400).json({
+          error: "Date range too large",
+          message: `Export window cannot exceed ${MAX_EXPORT_WINDOW_DAYS} days. Your request spans ${Math.ceil(windowMs / (24 * 60 * 60 * 1000))} days.`,
+          maxDays: MAX_EXPORT_WINDOW_DAYS,
+        });
+      }
+    } else if (!startDate || !endDate) {
+      // If no date range specified, default to last 7 days
+      endDate = new Date();
+      startDate = new Date(endDate.getTime() - 7 * 24 * 60 * 60 * 1000);
+      filter.createdAt = {
+        $gte: startDate,
+        $lte: endDate,
+      };
+    }
+
     // Fetch logs (limit to 10,000 for export safety)
+    const MAX_EXPORT_ROWS = 10000;
     const logs = await AuditLog.find(filter)
       .sort({ createdAt: -1 })
-      .limit(10000)
+      .limit(MAX_EXPORT_ROWS)
       .lean();
+
+    // HARDENING: Log the export action for audit trail
+    await logAuditEvent({
+      action: "AUDIT_EXPORT",
+      status: "success",
+      userId: req.user?._id?.toString(),
+      ip: req.ip || req.socket.remoteAddress || "unknown",
+      userAgent: req.headers["user-agent"] || "unknown",
+      details: {
+        recordCount: logs.length,
+        filters: {
+          action: filter.action,
+          userId: filter.userId,
+          status: filter.status,
+          startDate: startDate?.toISOString(),
+          endDate: endDate?.toISOString(),
+        },
+        exportedAt: new Date(),
+        adminEmail: req.user?.email,
+      },
+    });
+
+    logger.info("Audit logs exported", {
+      adminId: req.user?._id,
+      recordCount: logs.length,
+      dateRange: { startDate, endDate },
+    });
 
     // Flatten logs for CSV export
     const flattenedLogs = logs.map((log) => ({
@@ -145,6 +249,22 @@ router.get("/audit-logs/export", protect, authorizeRoles("admin"), async (req: A
     res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
     res.send(csv);
   } catch (err: any) {
+    logger.error("Audit export failed", {
+      error: err?.message || err,
+      adminId: req.user?._id,
+    });
+    
+    // Log failed export attempt
+    await logAuditEvent({
+      action: "AUDIT_EXPORT",
+      status: "failure",
+      userId: req.user?._id?.toString(),
+      ip: req.ip || req.socket.remoteAddress || "unknown",
+      details: {
+        error: err?.message || "Unknown error",
+      },
+    });
+    
     res.status(500).json({ error: err?.message || "Failed to export audit logs" });
   }
 });

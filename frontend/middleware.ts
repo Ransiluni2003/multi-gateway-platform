@@ -53,10 +53,19 @@ export function middleware(req: NextRequest) {
     }
   }
 
+  // 3️⃣ Protect admin-only routes (Security Center, Admin Dashboard)
+  if (url.pathname.startsWith("/admin")) {
+    const role = user?.role;
+    if (role !== "administrator" && role !== "admin") {
+      url.pathname = "/dashboard";
+      return NextResponse.redirect(url);
+    }
+  }
+
   // Allow request if everything is valid
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/", "/login", "/dashboard/:path*", "/register"],
+  matcher: ["/", "/login", "/dashboard/:path*", "/admin/:path*", "/register"],
 };

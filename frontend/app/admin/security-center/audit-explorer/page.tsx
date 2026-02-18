@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import styles from '../security-center.module.css';
 
@@ -28,9 +28,12 @@ export default function AuditExplorer() {
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [pagination, setPagination] = useState<Pagination | null>(null);
   const [loading, setLoading] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [actions, setActions] = useState<string[]>([]);
+  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(false);
+  const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Filters
   const [filters, setFilters] = useState({
@@ -53,6 +56,57 @@ export default function AuditExplorer() {
   useEffect(() => {
     fetchLogs();
   }, [filters.page]);
+
+  // Auto-refresh with tab visibility detection
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        // Tab is hidden, pause auto-refresh
+        if (refreshIntervalRef.current) {
+          clearInterval(refreshIntervalRef.current);
+          refreshIntervalRef.current = null;
+        }
+      } else {
+        // Tab is visible, resume auto-refresh if enabled
+        if (autoRefreshEnabled && !refreshIntervalRef.current) {
+          startAutoRefresh();
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+      }
+    };
+  }, [autoRefreshEnabled]);
+
+  // Start/stop auto-refresh when enabled/disabled
+  useEffect(() => {
+    if (autoRefreshEnabled && !document.hidden) {
+      startAutoRefresh();
+    } else {
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+        refreshIntervalRef.current = null;
+      }
+    }
+
+    return () => {
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+      }
+    };
+  }, [autoRefreshEnabled]);
+
+  const startAutoRefresh = () => {
+    refreshIntervalRef.current = setInterval(() => {
+      fetchLogs();
+    }, 30000); // Refresh every 30 seconds
+  };
 
   const fetchActions = async () => {
     try {
@@ -93,7 +147,8 @@ export default function AuditExplorer() {
       });
 
       if (!res.ok) {
-        throw new Error('Failed to fetch audit logs');
+        const errorData = await res.json().catch(() => ({ error: 'Failed to fetch audit logs' }));
+        throw new Error(errorData.message || errorData.error || 'Failed to fetch audit logs');
       }
 
       const data = await res.json();
@@ -132,6 +187,7 @@ export default function AuditExplorer() {
     try {
       setSuccess(null);
       setError(null);
+      setExporting(true);
       
       const token = localStorage.getItem('authToken');
       
@@ -149,7 +205,8 @@ export default function AuditExplorer() {
       });
 
       if (!res.ok) {
-        throw new Error('Failed to export logs');
+        const errorData = await res.json().catch(() => ({ error: 'Failed to export logs' }));
+        throw new Error(errorData.message || errorData.error || 'Failed to export logs');
       }
 
       // Download the CSV file
@@ -167,6 +224,8 @@ export default function AuditExplorer() {
       setTimeout(() => setSuccess(null), 3000);
     } catch (err: any) {
       setError(err?.message || 'Failed to export CSV');
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -188,17 +247,49 @@ export default function AuditExplorer() {
         </button>
       </div>
 
-      {error && <div className={styles.error}>{error}</div>}
-      {success && <div className={styles.success}>{success}</div>}
+      {/* Enhanced Error Banner */}
+      {error && (
+        <div className={styles.error} style={{ marginTop: '1rem', padding: '1rem' }}>
+          <div style={{ fontWeight: 'bold', marginBottom: '0.5rem' }}>❌ Error</div>
+          <div>{error}</div>
+          <button
+            className={`${styles.button} ${styles.buttonSecondary}`}
+            onClick={() => {
+              setError(null);
+              fetchLogs();
+            }}
+            style={{ marginTop: '0.5rem' }}
+          >
+            🔄 Retry
+          </button>
+        </div>
+      )}
+      
+      {success && (
+        <div className={styles.success} style={{ marginTop: '1rem', padding: '1rem' }}>
+          <div style={{ fontWeight: 'bold' }}>✅ {success}</div>
+        </div>
+      )}
 
       <div className={styles.filters}>
-        <h3 style={{ marginBottom: '1rem' }}>Filters</h3>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <h3>Filters</h3>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={autoRefreshEnabled}
+              onChange={(e) => setAutoRefreshEnabled(e.target.checked)}
+            />
+            <span>Auto-refresh (30s)</span>
+          </label>
+        </div>
         <div className={styles.filterRow}>
           <div className={styles.filterGroup}>
             <label>Action Type</label>
             <select
               value={filters.action}
               onChange={(e) => handleFilterChange('action', e.target.value)}
+              disabled={loading}
             >
               <option value="">All Actions</option>
               {actions.map(action => (
@@ -214,6 +305,7 @@ export default function AuditExplorer() {
               value={filters.userId}
               onChange={(e) => handleFilterChange('userId', e.target.value)}
               placeholder="Enter user ID"
+              disabled={loading}
             />
           </div>
 
@@ -224,6 +316,7 @@ export default function AuditExplorer() {
               value={filters.target}
               onChange={(e) => handleFilterChange('target', e.target.value)}
               placeholder="Enter target"
+              disabled={loading}
             />
           </div>
 
@@ -232,6 +325,7 @@ export default function AuditExplorer() {
             <select
               value={filters.status}
               onChange={(e) => handleFilterChange('status', e.target.value)}
+              disabled={loading}
             >
               <option value="">All Status</option>
               <option value="success">Success</option>
@@ -248,6 +342,7 @@ export default function AuditExplorer() {
               type="datetime-local"
               value={filters.startDate}
               onChange={(e) => handleFilterChange('startDate', e.target.value)}
+              disabled={loading}
             />
           </div>
 
@@ -257,6 +352,7 @@ export default function AuditExplorer() {
               type="datetime-local"
               value={filters.endDate}
               onChange={(e) => handleFilterChange('endDate', e.target.value)}
+              disabled={loading}
             />
           </div>
         </div>
@@ -265,27 +361,36 @@ export default function AuditExplorer() {
           <button
             className={`${styles.button} ${styles.buttonPrimary}`}
             onClick={handleSearch}
+            disabled={loading}
           >
-            🔍 Search
+            🔍 {loading ? 'Searching...' : 'Search'}
           </button>
           <button
             className={`${styles.button} ${styles.buttonSecondary}`}
             onClick={handleClearFilters}
+            disabled={loading}
           >
             Clear Filters
           </button>
           <button
             className={`${styles.button} ${styles.buttonSecondary}`}
             onClick={handleExportCSV}
+            disabled={loading || exporting}
           >
-            📥 Export CSV
+            📥 {exporting ? 'Exporting...' : 'Export CSV'}
           </button>
         </div>
       </div>
 
       <div className={styles.table}>
         {loading ? (
-          <div className={styles.loading}>Loading audit logs...</div>
+          <div className={styles.loading} style={{ padding: '3rem', textAlign: 'center' }}>
+            <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>⏳</div>
+            <div>Loading audit logs...</div>
+            <div style={{ fontSize: '0.875rem', color: '#666', marginTop: '0.5rem' }}>
+              This may take a moment for large datasets
+            </div>
+          </div>
         ) : (
           <>
             <div className={styles.tableContainer}>
@@ -303,8 +408,25 @@ export default function AuditExplorer() {
                 <tbody>
                   {logs.length === 0 ? (
                     <tr>
-                      <td colSpan={6} style={{ textAlign: 'center', padding: '2rem' }}>
-                        No audit logs found
+                      <td colSpan={6} style={{ textAlign: 'center', padding: '3rem' }}>
+                        <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🔍</div>
+                        <div style={{ fontSize: '1.125rem', fontWeight: 'bold', marginBottom: '0.5rem' }}>
+                          No audit logs found
+                        </div>
+                        <div style={{ color: '#666', marginBottom: '1rem' }}>
+                          {filters.action || filters.userId || filters.target || filters.status || filters.startDate || filters.endDate
+                            ? 'Try removing some filters or expanding the date range'
+                            : 'No audit logs have been recorded yet'}
+                        </div>
+                        {(filters.action || filters.userId || filters.target || filters.status || filters.startDate || filters.endDate) && (
+                          <button
+                            className={`${styles.button} ${styles.buttonSecondary}`}
+                            onClick={handleClearFilters}
+                            style={{ marginTop: '0.5rem' }}
+                          >
+                            Clear All Filters
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ) : (
@@ -333,7 +455,7 @@ export default function AuditExplorer() {
               </table>
             </div>
 
-            {pagination && (
+            {pagination && pagination.total > 0 && (
               <div className={styles.pagination}>
                 <div className={styles.paginationInfo}>
                   Showing {((pagination.page - 1) * pagination.limit) + 1} - {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} logs
@@ -341,7 +463,7 @@ export default function AuditExplorer() {
                 <div className={styles.paginationButtons}>
                   <button
                     className={`${styles.button} ${styles.buttonSecondary}`}
-                    disabled={!pagination.hasPreviousPage}
+                    disabled={!pagination.hasPreviousPage || loading}
                     onClick={() => setFilters(prev => ({ ...prev, page: prev.page - 1 }))}
                   >
                     Previous
@@ -351,7 +473,7 @@ export default function AuditExplorer() {
                   </span>
                   <button
                     className={`${styles.button} ${styles.buttonSecondary}`}
-                    disabled={!pagination.hasNextPage}
+                    disabled={!pagination.hasNextPage || loading}
                     onClick={() => setFilters(prev => ({ ...prev, page: prev.page + 1 }))}
                   >
                     Next

@@ -22,4 +22,14 @@ const AuditLogSchema = new Schema<IAuditLog>(
   { timestamps: { createdAt: "createdAt" } }
 );
 
+// PERFORMANCE: Compound indexes for efficient audit log queries
+// Primary index: date range queries with optional filters (most common pattern)
+AuditLogSchema.index({ createdAt: -1, action: 1, userId: 1, status: 1 });
+
+// Date-only index: for queries without specific filters
+AuditLogSchema.index({ createdAt: -1 });
+
+// User-centric index: for user-specific audit trails
+AuditLogSchema.index({ userId: 1, createdAt: -1 });
+
 export const AuditLog = mongoose.models.AuditLog || mongoose.model<IAuditLog>("AuditLog", AuditLogSchema);
